@@ -309,7 +309,10 @@ fun parseModels(answer: JSONObject): List<Pair<String, String>> {
     for (index in 0 until instances.length()) {
         val instance = instances.optJSONObject(index) ?: continue
         val instanceId = instance.optString("instanceId").takeIf { it.isNotBlank() } ?: continue
+        // Current OpenMausBot /api/instances responses use models.options.
+        // Keep compatibility with older servers that returned a raw array.
         val models = instance.optJSONArray("models")
+            ?: instance.optJSONObject("models")?.optJSONArray("options")
             ?: instance.optJSONObject("catalog")?.optJSONArray("models")
         if (models != null) {
             for (modelIndex in 0 until models.length()) {
