@@ -78,7 +78,12 @@ fun ChatScreen(
 ) {
     val bot = (selection as? Selection.BotTarget)?.bot
     val group = (selection as? Selection.GroupTarget)?.group
-    val threadId = bot?.activeTask?.threadId ?: bot?.threadId ?: group?.threadId ?: ""
+    val requestedThreadId = when (selection) {
+        is Selection.BotTarget -> selection.threadId
+        is Selection.GroupTarget -> selection.threadId
+    }
+    val threadId = requestedThreadId?.takeIf { it.isNotBlank() }
+        ?: bot?.activeTask?.threadId ?: bot?.threadId ?: group?.threadId ?: ""
     val title = bot?.name ?: group?.name ?: "แชต"
     val subtitle = bot?.subtitle ?: group?.subtitle ?: ""
     val liveBot = bot?.let { Repo.bots.firstOrNull { b -> b.id == it.id } } ?: bot
