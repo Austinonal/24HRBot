@@ -116,7 +116,7 @@ fun RoutinesScreen() {
                 Text("กำลังโหลด…", modifier = Modifier.padding(top = 10.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             routines.isEmpty() -> {
-                EmptyState("ยังไม่มีงานตามกำหนด", error ?: "เพิ่มงานเพื่อให้ Bot ทำงานซ้ำตามตารางที่คุณตั้งไว้")
+                RoutineEmptyState("ยังไม่มีงานตามกำหนด", error ?: "เพิ่มงานเพื่อให้ Bot ทำงานซ้ำตามตารางที่คุณตั้งไว้")
                 if (error != null) TextButton(onClick = { scope.launch { refresh() } }) { Text("ลองโหลดอีกครั้ง") }
             }
             else -> LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -187,6 +187,22 @@ fun RoutinesScreen() {
                 }) { Text("ลบ") }
             },
             dismissButton = { TextButton(onClick = { deleting = null }) { Text("ยกเลิก") } },
+        )
+    }
+}
+
+@Composable
+private fun RoutineEmptyState(title: String, body: String) {
+    Column(
+        Modifier.fillMaxWidth().padding(vertical = 30.dp, horizontal = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        Text(
+            body,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 6.dp),
         )
     }
 }
