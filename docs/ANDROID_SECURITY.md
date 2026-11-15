@@ -17,9 +17,11 @@ status from the paired Host and may start, poll, or cancel only the primary
 Codex device-code sign-in. It validates the provider URL and short-lived code
 before opening or displaying them. The phone cannot read provider credentials,
 change engine configuration, sign out, or initiate browser OAuth callbacks.
-Claude consumer sign-in and Google Antigravity sign-in are not offered in this
-screen because both services require users to be at least 18; a self-attested
-checkbox is not an age-verification method.
+Claude consumer sign-in is not offered in this screen because the service
+requires users to be at least 18; a self-attested checkbox is not an
+age-verification method. Google Antigravity account status is displayed when
+available, but its browser OAuth callback must be completed on the paired Host,
+not through the phone Companion.
 
 ## Security controls in this build
 
