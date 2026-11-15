@@ -152,7 +152,7 @@ fun InboxScreen(onOpen: (botId: String?, groupId: String?, threadId: String) -> 
                     color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp))
                 TextButton(onClick = { scope.launch { refresh() } }) { Text("ลองอีกครั้ง") }
             }
-            filtered.isEmpty() -> EmptyState(
+            filtered.isEmpty() -> InboxEmptyState(
                 when (filter) {
                     InboxFilter.NEEDS_YOU -> "ไม่มีรายการที่รอคุณ"
                     InboxFilter.INFO -> "ยังไม่มีข้อมูลใหม่"
@@ -198,6 +198,18 @@ fun InboxScreen(onOpen: (botId: String?, groupId: String?, threadId: String) -> 
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun InboxEmptyState(title: String, body: String) {
+    Column(
+        Modifier.fillMaxWidth().padding(vertical = 30.dp, horizontal = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        Text(body, style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 6.dp))
     }
 }
 
