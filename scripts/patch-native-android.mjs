@@ -43,10 +43,6 @@ await copyTemplate(
   "app/src/main/java/org/openmausbot/android/ui/BotSheet.kt",
 );
 await copyTemplate(
-  "scripts/native-android/AccountsScreen.kt",
-  "app/src/main/java/org/openmausbot/android/ui/AccountsScreen.kt",
-);
-await copyTemplate(
   "scripts/native-android/DeviceStore.kt",
   "app/src/main/java/org/openmausbot/android/data/DeviceStore.kt",
 );
