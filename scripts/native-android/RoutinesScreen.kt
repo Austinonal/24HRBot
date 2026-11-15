@@ -5,7 +5,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -225,7 +227,7 @@ private fun RoutineCard(row: RoutineItem, onToggle: (Boolean) -> Unit, onRun: ()
             Text("รอบถัดไป: " + timeLabel(row.next), style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                TextButton(onClick = onDelete) { Icon(Icons.Default.DeleteOutline, null); Text("ลบ") }
+                TextButton(onClick = onDelete) { Text("×", fontSize = 20.sp); Text("ลบ") }
                 TextButton(onClick = onRun, enabled = row.enabled) { Icon(Icons.Default.PlayArrow, null); Text("รันทันที") }
             }
         }
@@ -235,7 +237,7 @@ private fun RoutineCard(row: RoutineItem, onToggle: (Boolean) -> Unit, onRun: ()
 @Composable
 private fun RunRow(row: RoutineRunItem) {
     Row(Modifier.fillMaxWidth().padding(vertical = 7.dp), verticalAlignment = Alignment.Top) {
-        Icon(Icons.Default.Schedule, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
+        Text("•", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
         Column(Modifier.weight(1f).padding(start = 10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(row.name, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
