@@ -132,7 +132,7 @@ suite("S4 pages, tabs and page state on real Chrome", () => {
     // pageshow signal instead of requiring one cache policy on every runner.
     const loadsAfterForward = Number(await read(`document.getElementById("n").dataset.loads`));
     expect([1, 2]).toContain(loadsAfterForward);
-    expect(await read("window.__pageShowPersisted")).toBe(loadsAfterForward === 1);
+    expect(await inPageWorld(() => page.evaluate("window.__pageShowPersisted", { world: "page" }))).toBe(loadsAfterForward === 1);
 
     await page.reload();
     expect(Number(await read(`document.getElementById("n").dataset.loads`))).toBe(loadsAfterForward + 1);
