@@ -78,6 +78,7 @@ fun ChatScreen(
     selection: Selection,
     onBack: () -> Unit,
     onOpenSettings: () -> Unit,
+    onChangeThread: (String) -> Unit,
 ) {
     val bot = (selection as? Selection.BotTarget)?.bot
     val group = (selection as? Selection.GroupTarget)?.group
@@ -316,7 +317,12 @@ fun ChatScreen(
     }
 
     if (sheet && bot != null) {
-        BotSheet(bot = liveBot ?: bot, onDismiss = { sheet = false })
+        BotSheet(
+            bot = liveBot ?: bot,
+            currentThreadId = threadId,
+            onOpenThread = onChangeThread,
+            onDismiss = { sheet = false },
+        )
     }
 }
 
