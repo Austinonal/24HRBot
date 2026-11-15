@@ -39,6 +39,10 @@ await copyTemplate(
   "app/src/main/java/org/openmausbot/android/ui/BotSheet.kt",
 );
 await copyTemplate(
+  "scripts/native-android/ProviderAccountsPanel.kt",
+  "app/src/main/java/org/openmausbot/android/ui/ProviderAccountsPanel.kt",
+);
+await copyTemplate(
   "scripts/native-android/DeviceStore.kt",
   "app/src/main/java/org/openmausbot/android/data/DeviceStore.kt",
 );
@@ -188,6 +192,17 @@ for (const [relativePath, pairs] of Object.entries(localization)) {
   if (relativePath.endsWith("/ChatScreen.kt") || relativePath.endsWith("/HomeScreen.kt")) continue;
   await replacePairs(relativePath, pairs);
 }
+
+const settingsPath = path.join(appRoot, "app/src/main/java/org/openmausbot/android/ui/SettingsScreen.kt");
+let settings = await readFile(settingsPath, "utf8");
+const connectionSection = '            Section("การเชื่อมต่อ")';
+if (!settings.includes(connectionSection)) throw new Error("Settings connection section not found");
+settings = settings.replace(
+  connectionSection,
+  '            Section("บัญชี AI")\n            ProviderAccountsPanel()\n\n' + connectionSection,
+);
+await writeFile(settingsPath, settings, "utf8");
+console.log("installed AI provider account panel");
 
 const apiPath = path.join(appRoot, "app/src/main/java/org/openmausbot/android/data/ApiClient.kt");
 let api = await readFile(apiPath, "utf8");
