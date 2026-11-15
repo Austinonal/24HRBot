@@ -2,6 +2,7 @@ package org.openmausbot.android.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -9,7 +10,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -77,18 +83,18 @@ fun HomeScreen() {
                 Text("พื้นที่ทำงาน", style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(start = 20.dp, top = 18.dp, bottom = 8.dp))
-                DrawerItem("แชตและทีม Bot", page == MainPage.CHATS, Icons.Default.ChatBubbleOutline) {
+                DrawerItem("แชตและทีม Bot", page == MainPage.CHATS, "C") {
                     page = MainPage.CHATS; scope.launch { drawer.close() }
                 }
-                DrawerItem("งานตามกำหนด", page == MainPage.ROUTINES, Icons.Default.Schedule) {
+                DrawerItem("งานตามกำหนด", page == MainPage.ROUTINES, "R") {
                     page = MainPage.ROUTINES; scope.launch { drawer.close() }
                 }
-                DrawerItem("ค้นหา", page == MainPage.SEARCH, Icons.Default.Search) {
+                DrawerItem("ค้นหา", page == MainPage.SEARCH, "⌕") {
                     page = MainPage.SEARCH; scope.launch { drawer.close() }
                 }
                 Spacer(Modifier.weight(1f))
                 HorizontalDivider()
-                DrawerItem("ตั้งค่า", false, Icons.Default.Settings) {
+                DrawerItem("ตั้งค่า", false, "⚙") {
                     scope.launch { drawer.close() }; settings = true
                 }
                 Text("บัญชีและการเชื่อมต่อจัดการจาก OpenMausBot ที่คุณจับคู่ไว้",
@@ -131,9 +137,9 @@ fun HomeScreen() {
             bottomBar = {
                 NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
                     NavigationBarItem(page == MainPage.CHATS, { page = MainPage.CHATS },
-                        icon = { Icon(Icons.Default.ChatBubbleOutline, null) }, label = { Text("แชต") })
+                        icon = { Text("C", style = MaterialTheme.typography.titleMedium) }, label = { Text("แชต") })
                     NavigationBarItem(page == MainPage.ROUTINES, { page = MainPage.ROUTINES },
-                        icon = { Icon(Icons.Default.Schedule, null) }, label = { Text("งาน") })
+                        icon = { Text("R", style = MaterialTheme.typography.titleMedium) }, label = { Text("งาน") })
                     NavigationBarItem(page == MainPage.SEARCH, { page = MainPage.SEARCH },
                         icon = { Icon(Icons.Default.Search, null) }, label = { Text("ค้นหา") })
                 }
@@ -170,10 +176,10 @@ fun HomeScreen() {
 }
 
 @Composable
-private fun DrawerItem(title: String, selected: Boolean, icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) {
+private fun DrawerItem(title: String, selected: Boolean, glyph: String, onClick: () -> Unit) {
     NavigationDrawerItem(
         label = { Text(title) }, selected = selected, onClick = onClick,
-        icon = { Icon(icon, contentDescription = null) }, modifier = Modifier.padding(horizontal = 10.dp),
+        icon = { Text(glyph, style = MaterialTheme.typography.titleMedium) }, modifier = Modifier.padding(horizontal = 10.dp),
     )
 }
 
@@ -297,7 +303,7 @@ private fun GroupRow(group: Group, onClick: () -> Unit) {
         shape = RoundedCornerShape(19.dp)) {
         Row(Modifier.padding(horizontal = 14.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(46.dp).clip(CircleShape).background(MaterialTheme.colorScheme.secondaryContainer),
-                contentAlignment = Alignment.Center) { Icon(Icons.Default.Group, null, tint = MaterialTheme.colorScheme.onSecondaryContainer) }
+                contentAlignment = Alignment.Center) { Text("G", color = MaterialTheme.colorScheme.onSecondaryContainer, fontWeight = FontWeight.Bold) }
             Column(Modifier.weight(1f).padding(start = 13.dp)) {
                 Text(group.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(group.subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
