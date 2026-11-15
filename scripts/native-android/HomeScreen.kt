@@ -243,7 +243,7 @@ private fun ChatsPage(onBot: (Bot) -> Unit, onGroup: (Group) -> Unit) {
     if (Repo.connection.phase == ConnectionState.Phase.CONNECTING && Repo.bots.isEmpty()) {
         Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
             CircularProgressIndicator(Modifier.size(28.dp), strokeWidth = 2.dp)
-            Text("กำลังเชื่อมต่อกับคอมพิวเตอร์…", color = MaterialTheme.colorScheme.onSurfaceVariant,
+            Text("กำลังเชื่อมต่อกับ OpenMausBot Server…", color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 14.dp))
         }
         return
@@ -336,7 +336,7 @@ private fun SearchPage(
         if (computerId == null) {
             hits = emptyList()
             searched = true
-            error = "เชื่อมต่อคอมพิวเตอร์ก่อนจึงจะค้นหาประวัติแชตได้"
+            error = "เชื่อมต่อ OpenMausBot Server ก่อนจึงจะค้นหาประวัติแชตได้"
             return@LaunchedEffect
         }
         delay(250)
@@ -532,7 +532,7 @@ private fun EmptyState(title: String, body: String) {
 @Composable
 private fun ConnectionError(detail: String) {
     Column(Modifier.fillMaxSize().padding(32.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text("เชื่อมต่อคอมพิวเตอร์ไม่ได้", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        Text("เชื่อมต่อ OpenMausBot Server ไม่ได้", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
         Text(detail.ifBlank { "ตรวจสอบว่า OpenMausBot เปิดอยู่ และโทรศัพท์เชื่อมต่อผ่านเครือข่ายที่อนุญาต" },
             style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp))
         TextButton(onClick = { Repo.connect() }, modifier = Modifier.padding(top = 12.dp)) { Text("ลองอีกครั้ง") }
