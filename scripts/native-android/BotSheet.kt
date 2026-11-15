@@ -1,6 +1,13 @@
 package org.openmausbot.android.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -38,6 +45,7 @@ import org.json.JSONObject
 import org.openmausbot.android.data.ApiClient
 import org.openmausbot.android.data.currentBaseUrl
 import org.openmausbot.android.data.Bot
+import org.openmausbot.android.data.Task
 import org.openmausbot.android.data.Repo
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -55,6 +63,11 @@ fun BotSheet(
     var models by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
     var loadingModels by remember { mutableStateOf(true) }
     var notifications by remember(bot.id) { mutableStateOf(bot.notifications) }
+    var taskMenuFor by remember { mutableStateOf<String?>(null) }
+    var renameTask by remember { mutableStateOf<Task?>(null) }
+    var deleteTask by remember { mutableStateOf<Task?>(null) }
+    var renameTitle by remember { mutableStateOf("") }
+    var taskActionError by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(bot.id) {
         val list = withContext(Dispatchers.IO) {
@@ -186,38 +199,71 @@ fun BotSheet(
             } else {
                 conversations.forEach { task ->
                     val selected = task.threadId == currentThreadId
-                    TextButton(
-                        onClick = {
-                            if (!selected) {
-                                onOpenThread(task.threadId)
-                                onDismiss()
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        TextButton(
+                            onClick = {
+                                if (!selected) {
+                                    onOpenThread(task.threadId)
+                                    onDismiss()
+                                }
+                            },
+                            modifier = Modifier.weight(1f),
+                            enabled = !selected,
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    task.title.ifBlank { "บทสนทนาใหม่" },
+                                    color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 1,
+                                )
+                                Text(
+                                    when {
+                                        task.busy -> "กำลังทำงาน"
+                                        task.unread -> "มีข้อความใหม่"
+                                        else -> "บทสนทนา"
+                                    },
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
                             }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = !selected,
-                    ) {
-                        Column(Modifier.weight(1f)) {
-                            Text(
-                                task.title.ifBlank { "บทสนทนาใหม่" },
-                                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                                maxLines = 1,
-                            )
-                            Text(
-                                when {
-                                    task.busy -> "กำลังทำงาน"
-                                    task.unread -> "มีข้อความใหม่"
-                                    else -> "บทสนทนา"
-                                },
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
+                            if (selected) {
+                                Text("เปิดอยู่", style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary)
+                            }
                         }
-                        if (selected) {
-                            Text("เปิดอยู่", style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.primary)
+                        Box {
+                            IconButton(onClick = { taskMenuFor = task.threadId }) {
+                                Icon(Icons.Default.MoreVert, contentDescription = "เมนูบทสนทนา")
+                            }
+                            DropdownMenu(
+                                expanded = taskMenuFor == task.threadId,
+                                onDismissRequest = { taskMenuFor = null },
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("เปลี่ยนชื่อ") },
+                                    onClick = {
+                                        taskMenuFor = null
+                                        renameTitle = task.title
+                                        renameTask = task
+                                        taskActionError = null
+                                    },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("ลบบทสนทนา") },
+                                    onClick = {
+                                        taskMenuFor = null
+                                        deleteTask = task
+                                        taskActionError = null
+                                    },
+                                )
+                            }
                         }
                     }
                 }
+            }
+            taskActionError?.let { error ->
+                Text(error, style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 6.dp))
             }
 
             Spacer(Modifier.height(12.dp))
@@ -244,17 +290,24 @@ fun BotSheet(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextButton(
                     onClick = {
-                        // A fresh conversation on the same bot: the harness
-                        // opens one when a new thread title is asked for.
-                        Repo.scope.launch {
-                            runCatching {
-                                ApiAccess.post("/api/bots/${bot.id}/tasks", JSONObject().put("title", "新对话"))
+                        taskActionError = null
+                        scope.launch {
+                            try {
+                                val response = withContext(Dispatchers.IO) {
+                                    ApiAccess.post("/api/bots/${bot.id}/tasks", JSONObject())
+                                }
                                 Repo.refreshAll()
+                                val createdThread = response.optJSONObject("task")
+                                    ?.optString("threadId")?.takeIf { it.isNotBlank() }
+                                val fallbackThread = Repo.bots.firstOrNull { it.id == bot.id }?.activeTask?.threadId
+                                (createdThread ?: fallbackThread)?.let(onOpenThread)
+                                onDismiss()
+                            } catch (e: Exception) {
+                                taskActionError = e.message ?: "สร้างบทสนทนาใหม่ไม่สำเร็จ"
                             }
                         }
-                        onDismiss()
                     },
-                ) { Text("新对话") }
+                ) { Text("แชตใหม่") }
                 TextButton(
                     onClick = {
                         Repo.patchBot(bot.id, JSONObject().put("hidden", true))
@@ -263,6 +316,98 @@ fun BotSheet(
                 ) { Text("隐藏 Bot") }
             }
         }
+    }
+
+    renameTask?.let { task ->
+        AlertDialog(
+            onDismissRequest = { renameTask = null; taskActionError = null },
+            title = { Text("เปลี่ยนชื่อบทสนทนา") },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = renameTitle,
+                        onValueChange = { renameTitle = it.take(100) },
+                        singleLine = true,
+                        label = { Text("ชื่อบทสนทนา") },
+                    )
+                    taskActionError?.let {
+                        Text(it, color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(top = 8.dp))
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = renameTitle.isNotBlank() && renameTitle.trim() != task.title,
+                    onClick = {
+                        taskActionError = null
+                        scope.launch {
+                            try {
+                                withContext(Dispatchers.IO) {
+                                    ApiAccess.patch(
+                                        "/api/bots/${bot.id}/tasks/${task.threadId}",
+                                        JSONObject().put("title", renameTitle.trim()),
+                                    )
+                                }
+                                Repo.refreshAll()
+                                renameTask = null
+                            } catch (e: Exception) {
+                                taskActionError = e.message ?: "เปลี่ยนชื่อบทสนทนาไม่สำเร็จ"
+                            }
+                        }
+                    },
+                ) { Text("บันทึก") }
+            },
+            dismissButton = {
+                TextButton(onClick = { renameTask = null; taskActionError = null }) { Text("ยกเลิก") }
+            },
+        )
+    }
+
+    deleteTask?.let { task ->
+        AlertDialog(
+            onDismissRequest = { deleteTask = null; taskActionError = null },
+            title = { Text("ลบบทสนทนานี้ไหม?") },
+            text = {
+                Column {
+                    Text("ลบ “${task.title.ifBlank { "บทสนทนาใหม่" }}” ออกจาก Bot นี้ การลบจะย้อนกลับไม่ได้")
+                    taskActionError?.let {
+                        Text(it, color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(top = 8.dp))
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        taskActionError = null
+                        scope.launch {
+                            try {
+                                withContext(Dispatchers.IO) {
+                                    ApiAccess.delete("/api/bots/${bot.id}/tasks/${task.threadId}")
+                                }
+                                Repo.refreshAll()
+                                deleteTask = null
+                                if (task.threadId == currentThreadId) {
+                                    val refreshed = Repo.bots.firstOrNull { it.id == bot.id }
+                                    val nextThread = refreshed?.activeTask?.threadId
+                                        ?.takeIf { it.isNotBlank() && it != task.threadId }
+                                        ?: refreshed?.tasks?.firstOrNull { it.threadId != task.threadId }?.threadId
+                                    if (nextThread != null) onOpenThread(nextThread) else onDismiss()
+                                }
+                            } catch (e: Exception) {
+                                taskActionError = e.message ?: "ลบบทสนทนาไม่สำเร็จ"
+                            }
+                        }
+                    },
+                ) { Text("ลบ") }
+            },
+            dismissButton = {
+                TextButton(onClick = { deleteTask = null; taskActionError = null }) { Text("ยกเลิก") }
+            },
+        )
     }
 }
 
@@ -299,6 +444,8 @@ object ApiAccess {
 
     fun get(path: String): JSONObject = api()?.get(path) ?: JSONObject()
     fun post(path: String, body: JSONObject): JSONObject = api()?.post(path, body) ?: JSONObject()
+    fun patch(path: String, body: JSONObject): JSONObject = api()?.patch(path, body) ?: JSONObject()
+    fun delete(path: String): JSONObject = api()?.delete(path) ?: JSONObject()
 }
 
 /** Model catalogs differ per engine: instances carry either `models` or a
