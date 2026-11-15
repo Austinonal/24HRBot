@@ -1,6 +1,8 @@
 package org.openmausbot.android.ui
 
+import android.content.Intent
 import android.graphics.BitmapFactory
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -208,6 +210,34 @@ fun ChatScreen(
                                 onClick = { menu = false; Repo.interrupt(bot.id, threadId) },
                             )
                         }
+                        DropdownMenuItem(
+                            text = { Text("แชร์บทสนทนา") },
+                            onClick = {
+                                menu = false
+                                scope.launch {
+                                    try {
+                                        val markdown = withContext(Dispatchers.IO) {
+                                            ApiAccess.text("/api/threads/$threadId/export?format=markdown")
+                                        }
+                                        if (markdown.isBlank()) {
+                                            throw IllegalStateException("ไม่มีข้อความให้ส่งออก")
+                                        }
+                                        val share = Intent(Intent.ACTION_SEND).apply {
+                                            type = "text/markdown"
+                                            putExtra(Intent.EXTRA_SUBJECT, title)
+                                            putExtra(Intent.EXTRA_TEXT, markdown)
+                                        }
+                                        context.startActivity(Intent.createChooser(share, "แชร์บทสนทนา"))
+                                    } catch (e: Exception) {
+                                        Toast.makeText(
+                                            context,
+                                            e.message ?: "ส่งออกบทสนทนาไม่สำเร็จ",
+                                            Toast.LENGTH_LONG,
+                                        ).show()
+                                    }
+                                }
+                            },
+                        )
                         DropdownMenuItem(
                             text = { Text("ตั้งค่าแอป") },
                             onClick = { menu = false; onOpenSettings() },
