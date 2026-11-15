@@ -74,9 +74,9 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: OpenMausBot-Android-Thai-Grok-UI-debug
+          name: OpenMausBot-Android-Grok-Inspired-debug
           path: |
-            dist/OpenMausBot-Android-Thai-Grok-UI-debug.apk
+            dist/OpenMausBot-Android-Grok-Inspired-debug.apk
             dist/SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 30
