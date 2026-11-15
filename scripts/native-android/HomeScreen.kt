@@ -46,6 +46,7 @@ fun HomeScreen() {
     var selection by remember { mutableStateOf<Selection?>(null) }
     var page by rememberSaveable { mutableStateOf(MainPage.CHATS) }
     var settings by remember { mutableStateOf(false) }
+    var accountCenter by remember { mutableStateOf(false) }
     var newBot by remember { mutableStateOf(false) }
     var menu by remember { mutableStateOf(false) }
     val drawer = rememberDrawerState(DrawerValue.Closed)
@@ -62,6 +63,7 @@ fun HomeScreen() {
     BackHandler(selection == null && drawer.isOpen) { scope.launch { drawer.close() } }
 
     if (settings) { SettingsScreen(onClose = { settings = false }); return }
+    if (accountCenter) { AccountsScreen(onClose = { accountCenter = false }); return }
     selection?.let { current ->
         ChatScreen(
             selection = current,
@@ -113,10 +115,13 @@ fun HomeScreen() {
                 }
                 Spacer(Modifier.weight(1f))
                 HorizontalDivider()
+                DrawerItem("บัญชี AI", false, "A") {
+                    scope.launch { drawer.close() }; accountCenter = true
+                }
                 DrawerItem("ตั้งค่า", false, "⚙") {
                     scope.launch { drawer.close() }; settings = true
                 }
-                Text("บัญชีและการเชื่อมต่อจัดการจาก OpenMausBot ที่คุณจับคู่ไว้",
+                Text("การเข้าสู่ระบบและสถานะบัญชี AI",
                     style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp))
             }
