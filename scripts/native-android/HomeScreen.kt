@@ -60,6 +60,7 @@ fun HomeScreen() {
         Repo.clearError()
     }
     BackHandler(selection != null) { selection = null }
+    BackHandler(accountCenter) { accountCenter = false }
     BackHandler(selection == null && drawer.isOpen) { scope.launch { drawer.close() } }
 
     if (settings) { SettingsScreen(onClose = { settings = false }); return }
