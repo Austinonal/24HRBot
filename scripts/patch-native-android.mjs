@@ -181,32 +181,6 @@ for (const [relativePath, pairs] of Object.entries(localization)) {
   await replacePairs(relativePath, pairs);
 }
 
-const homePath = path.join(appRoot, "app/src/main/java/org/openmausbot/android/ui/HomeScreen.kt");
-let home = await readFile(homePath, "utf8");
-const oldHomeIntro = `        Column(Modifier.fillMaxSize().padding(padding)) {
-            TabRow(selectedTabIndex = tab, containerColor = MaterialTheme.colorScheme.background) {
-`;
-const newHomeIntro = `        Column(Modifier.fillMaxSize().padding(padding)) {
-            Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp)) {
-                Text(
-                    "ทีม AI ของคุณ",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Text(
-                    "เลือก Bot เพื่อเริ่มสนทนา หรือเปิดห้องสำหรับคุยร่วมกัน",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 5.dp),
-                )
-            }
-            TabRow(selectedTabIndex = tab, containerColor = MaterialTheme.colorScheme.background) {
-`;
-if (!home.includes(oldHomeIntro)) throw new Error("HomeScreen intro insertion anchor missing");
-home = home.replace(oldHomeIntro, newHomeIntro);
-await writeFile(homePath, home, "utf8");
-console.log("added a Thai-first home heading");
-
 const apiPath = path.join(appRoot, "app/src/main/java/org/openmausbot/android/data/ApiClient.kt");
 let api = await readFile(apiPath, "utf8");
 const oldOpen = [
