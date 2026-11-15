@@ -309,10 +309,26 @@ export function createInstanceRoutes(deps: InstanceRouteDeps): RouteHandler {
       } finally { providerConfigBusy.set(false); }
     }
 
+    const companionCodexDeviceLoginOnly = (targetId: string): boolean => {
+      if (auth.kind !== "loopback" || !auth.companionDevice) return true;
+      const target = registry.get(targetId);
+      return targetId === "codex"
+        && target?.driverKind === "codex"
+        && target.getAuthentication !== undefined
+        && target.completeAuthentication === undefined
+        && target.authenticationMethod !== "browser"
+        && target.authenticationMethod !== "browser-pkce";
+    };
     const authStatus = /^\/api\/instances\/([\w.-]+)\/auth\/status$/.exec(path);
     if (method === "GET" && authStatus) {
       res.setHeader("cache-control", "no-store");
-      const state = await providerAuthSessions.status(authStatus[1], auth.kind === "session" ? auth.session.id : "loopback", url.searchParams.get("flowId") ?? "");
+      if (!companionCodexDeviceLoginOnly(authStatus[1])) {
+        return json(res, 403, { error: "This provider sign-in must be managed in OpenMausBot on the host computer." });
+      }
+      const authOwner = auth.kind === "session"
+        ? auth.session.id
+        : auth.companionDevice ? "companion:" + auth.companionDevice : "loopback";
+      const state = await providerAuthSessions.status(authStatus[1], authOwner, url.searchParams.get("flowId") ?? "");
       // A finished device sign-in changed what the engine reports; the page reads the engines next.
       if (state.phase !== "waiting") registry.forgetSnapshots();
       return json(res, 200, { auth: state });
@@ -324,7 +340,9 @@ export function createInstanceRoutes(deps: InstanceRouteDeps): RouteHandler {
       }
       const instanceId = instanceAction[1];
       const action = instanceAction[2];
-      const owner = auth.kind === "session" ? auth.session.id : "loopback";
+      const owner = auth.kind === "session"
+        ? auth.session.id
+        : auth.companionDevice ? "companion:" + auth.companionDevice : "loopback";
       if (action.startsWith("auth/")) res.setHeader("cache-control", "no-store");
       try {
         if (action === "check") {
@@ -356,6 +374,9 @@ export function createInstanceRoutes(deps: InstanceRouteDeps): RouteHandler {
         if (action === "auth/start") {
           const instance = registry.get(instanceId);
           if (!instance) return json(res, 404, { error: "unknown instance" });
+          if (!companionCodexDeviceLoginOnly(instanceId)) {
+            return json(res, 403, { error: "This provider sign-in must be managed in OpenMausBot on the host computer." });
+          }
           // The official local OAuth callback terminates on this machine, not a phone or a remote browser.
           if (instance.authenticationMethod === "browser-pkce" && (isProxied(req) || !isLoopbackHost(req.socket.remoteAddress))) {
             return json(res, 403, { error: "Continue with ChatGPT on the computer running OpenMausBot. Hosted Pro sign-in requires OpenAI's hosted-app approval." });
@@ -385,6 +406,9 @@ export function createInstanceRoutes(deps: InstanceRouteDeps): RouteHandler {
           await providerAuthSessions.complete(instanceId, owner, flowId, callbackUrl);
           registry.forgetSnapshots();
           return json(res, 200, { ok: true });
+        }
+        if (!companionCodexDeviceLoginOnly(instanceId)) {
+          return json(res, 403, { error: "This provider sign-in must be managed in OpenMausBot on the host computer." });
         }
         const body = await readBody(req, 4096);
         await providerAuthSessions.cancel(instanceId, owner, typeof body?.flowId === "string" ? body.flowId : "");
