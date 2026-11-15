@@ -10,6 +10,22 @@ This is **not a complete port of the desktop application**. It is a companion cl
 
 The Android foreground-service model also does not guarantee that Android or an OEM battery manager will keep a network connection alive indefinitely when the app is backgrounded or force-stopped. The server-side agent remains the always-on component; the phone is only a controller/notification client.
 
+## Bot computer selection from Android
+
+The native Bot sheet exposes a per-Bot computer preference: Automatic, This
+computer (CUA), Cloud computer, isolated Local VM, Browser, or Off. It reads
+the current setting from the Bot list and saves through the existing
+`PATCH /api/bots/{botId}` route. This is a preference selector, not a full
+desktop-settings port: it does not install CUA, grant Host OS permissions,
+create a paid cloud desktop, or wake a powered-off personal PC.
+
+The AI model picker remains separate. It uses the model catalog already
+configured on the paired Host, so GPT, Gemini, and other engines are selectable
+only when the Host has a supported provider/engine configured. Provider API
+keys and sign-in credentials remain Host-managed and are never entered into or
+stored by the APK. CUA provides computer interaction, not model inference; see
+[mobile computer and brain routing](mobile-computer-and-brain.md).
+
 ## WebView fallback
 
 The separate `mobile/android/` source in this integration pack wraps the existing responsive web UI. It is not the native companion protocol implementation.
