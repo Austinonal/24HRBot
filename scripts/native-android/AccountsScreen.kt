@@ -19,8 +19,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -256,7 +254,6 @@ fun AccountsScreen(onClose: () -> Unit) {
                                         },
                                         modifier = Modifier.weight(1f),
                                     ) {
-                                        Icon(Icons.Default.ContentCopy, null)
                                         Text("คัดลอกรหัส", modifier = Modifier.padding(start = 6.dp))
                                     }
                                     OutlinedButton(
@@ -267,7 +264,6 @@ fun AccountsScreen(onClose: () -> Unit) {
                                         },
                                         modifier = Modifier.weight(1f),
                                     ) {
-                                        Icon(Icons.Default.OpenInNew, null)
                                         Text("เปิดหน้าอนุญาต", modifier = Modifier.padding(start = 6.dp))
                                     }
                                 }
