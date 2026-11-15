@@ -316,7 +316,6 @@ export function createInstanceRoutes(deps: InstanceRouteDeps): RouteHandler {
         && target?.driverKind === "codex"
         && target.getAuthentication !== undefined
         && target.completeAuthentication === undefined
-        && target.authenticationMethod !== "browser"
         && target.authenticationMethod !== "browser-pkce";
     };
     const authStatus = /^\/api\/instances\/([\w.-]+)\/auth\/status$/.exec(path);
