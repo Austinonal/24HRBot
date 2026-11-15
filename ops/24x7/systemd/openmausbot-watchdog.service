@@ -1,0 +1,17 @@
+[Unit]
+Description=OpenMausBot Docker health watchdog
+After=docker.service network-online.target
+Requires=docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=-/etc/openmausbot-24x7.env
+ExecStart=/usr/local/sbin/openmausbot-watchdog
+Restart=always
+RestartSec=15
+TimeoutStopSec=30
+KillSignal=SIGTERM
+
+[Install]
+WantedBy=multi-user.target

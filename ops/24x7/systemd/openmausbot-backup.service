@@ -1,0 +1,12 @@
+[Unit]
+Description=Consistent OpenMausBot data-volume backup
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/etc/openmausbot-24x7.env
+ExecStart=/usr/local/sbin/openmausbot-backup
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
