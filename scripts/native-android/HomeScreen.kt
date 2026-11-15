@@ -34,7 +34,7 @@ import org.openmausbot.android.data.ConnectionState
 import org.openmausbot.android.data.Group
 import org.openmausbot.android.data.Repo
 
-private enum class MainPage { CHATS, ROUTINES, SEARCH }
+private enum class MainPage { CHATS, INBOX, ROUTINES, SEARCH }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -86,6 +86,9 @@ fun HomeScreen() {
                 DrawerItem("แชตและทีม Bot", page == MainPage.CHATS, "C") {
                     page = MainPage.CHATS; scope.launch { drawer.close() }
                 }
+                DrawerItem("กล่องเข้า", page == MainPage.INBOX, "!") {
+                    page = MainPage.INBOX; scope.launch { drawer.close() }
+                }
                 DrawerItem("งานตามกำหนด", page == MainPage.ROUTINES, "R") {
                     page = MainPage.ROUTINES; scope.launch { drawer.close() }
                 }
@@ -115,6 +118,7 @@ fun HomeScreen() {
                         Column {
                             Text(when (page) {
                                 MainPage.CHATS -> "แชต"
+                                MainPage.INBOX -> "กล่องเข้า"
                                 MainPage.ROUTINES -> "งานตามกำหนด"
                                 MainPage.SEARCH -> "ค้นหา"
                             }, fontWeight = FontWeight.SemiBold, fontSize = 20.sp)
@@ -138,6 +142,8 @@ fun HomeScreen() {
                 NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
                     NavigationBarItem(page == MainPage.CHATS, { page = MainPage.CHATS },
                         icon = { Text("C", style = MaterialTheme.typography.titleMedium) }, label = { Text("แชต") })
+                    NavigationBarItem(page == MainPage.INBOX, { page = MainPage.INBOX },
+                        icon = { Text("!", style = MaterialTheme.typography.titleMedium) }, label = { Text("กล่อง") })
                     NavigationBarItem(page == MainPage.ROUTINES, { page = MainPage.ROUTINES },
                         icon = { Text("R", style = MaterialTheme.typography.titleMedium) }, label = { Text("งาน") })
                     NavigationBarItem(page == MainPage.SEARCH, { page = MainPage.SEARCH },
@@ -156,6 +162,19 @@ fun HomeScreen() {
                         onBot = { bot -> selection = Selection.BotTarget(bot); Repo.openThread(bot.activeTask?.threadId ?: bot.threadId) },
                         onGroup = { group -> selection = Selection.GroupTarget(group); Repo.openThread(group.threadId) },
                     )
+                    MainPage.INBOX -> InboxScreen { botId, groupId, threadId ->
+                        if (groupId != null) {
+                            Repo.groups.firstOrNull { it.id == groupId }?.let { group ->
+                                selection = Selection.GroupTarget(group)
+                                Repo.openThread(threadId)
+                            }
+                        } else {
+                            Repo.bots.firstOrNull { it.id == botId }?.let { bot ->
+                                selection = Selection.BotTarget(bot)
+                                Repo.openThread(threadId)
+                            }
+                        }
+                    }
                     MainPage.ROUTINES -> RoutinesScreen()
                     MainPage.SEARCH -> SearchPage(
                         onBot = { bot -> selection = Selection.BotTarget(bot); Repo.openThread(bot.activeTask?.threadId ?: bot.threadId) },
