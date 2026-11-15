@@ -113,7 +113,7 @@ fun AccountsScreen(onClose: () -> Unit) {
             refreshAccounts()
             error = null
         } catch (cause: Exception) {
-            error = cause.message ?: "อ่านสถานะบัญชีจากคอมพิวเตอร์ไม่สำเร็จ"
+            error = cause.message ?: "อ่านสถานะบัญชีจาก OpenMausBot Server ไม่สำเร็จ"
         } finally {
             loading = false
         }
@@ -207,7 +207,7 @@ fun AccountsScreen(onClose: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Text(
-                "จัดการบัญชีที่ OpenMausBot บนคอมพิวเตอร์เชื่อมต่อไว้",
+                "จัดการบัญชีที่ OpenMausBot Server เชื่อมต่อไว้",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -227,7 +227,7 @@ fun AccountsScreen(onClose: () -> Unit) {
                     subtitle = "เชื่อมต่อด้วยบัญชี ChatGPT ผ่าน Codex device sign-in",
                     connected = codex?.authenticated == true,
                     detail = codex?.email ?: if (codex == null) {
-                        "ยังไม่พบ Codex บนคอมพิวเตอร์ที่จับคู่ไว้"
+                        "ยังไม่พบ Codex บน OpenMausBot Server ที่จับคู่ไว้"
                     } else if (codex.authenticated) {
                         "เชื่อมต่อแล้ว"
                     } else {
@@ -336,14 +336,14 @@ fun AccountsScreen(onClose: () -> Unit) {
                         }
                         codex == null -> {
                             Text(
-                                "เพิ่มหรือเตรียม Codex engine จาก OpenMausBot บนคอมพิวเตอร์ก่อน แล้วกลับมารีเฟรชหน้านี้",
+                                "เพิ่มหรือเตรียม Codex engine บน OpenMausBot Server ก่อน แล้วกลับมารีเฟรชหน้านี้",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                         !hasCodexDeviceLogin && codex?.authenticated != true -> {
                             Text(
-                                "บัญชีนี้ใช้วิธีเข้าสู่ระบบที่ต้องเริ่มบนคอมพิวเตอร์ จึงไม่สามารถเริ่มจากโทรศัพท์ได้",
+                                "บัญชีนี้ใช้วิธีเข้าสู่ระบบที่ต้องเริ่มจาก OpenMausBot Server จึงไม่สามารถเริ่มจากโทรศัพท์ได้",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
