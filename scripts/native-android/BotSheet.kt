@@ -63,6 +63,8 @@ fun BotSheet(
     var model by remember(bot.id) { mutableStateOf(bot.modelSelection?.model ?: "") }
     var models by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
     var loadingModels by remember { mutableStateOf(true) }
+    var computerMode by remember(bot.id) { mutableStateOf("auto") }
+    var loadingComputer by remember { mutableStateOf(true) }
     var notifications by remember(bot.id) { mutableStateOf(bot.notifications) }
     var taskMenuFor by remember { mutableStateOf<String?>(null) }
     var renameTask by remember { mutableStateOf<Task?>(null) }
@@ -83,6 +85,21 @@ fun BotSheet(
         models = list
         loadingModels = false
         if (model.isBlank()) model = bot.modelSelection?.model ?: ""
+
+        val savedComputer = withContext(Dispatchers.IO) {
+            runCatching {
+                val answer = ApiAccess.get("/api/bots")
+                val rows = answer.optJSONArray("bots")
+                val row = (0 until (rows?.length() ?: 0))
+                    .asSequence()
+                    .mapNotNull { rows?.optJSONObject(it) }
+                    .firstOrNull { it.optString("id") == bot.id }
+                val raw = row?.opt("computer") as? String
+                raw?.takeIf { it in setOf("cloud", "vm", "local", "browser", "off") } ?: "auto"
+            }.getOrDefault("auto")
+        }
+        computerMode = savedComputer
+        loadingComputer = false
     }
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
@@ -171,6 +188,96 @@ fun BotSheet(
                             )
                         }
                     }
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+            Spacer(Modifier.height(10.dp))
+
+            Text(
+                "สมอง AI · API / Engine",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                "เลือก GPT, Gemini หรือโมเดลอื่นที่เซิร์ฟเวอร์เปิดใช้งานไว้ การตั้งค่า API และข้อมูลลับจัดการบน Host ไม่เก็บในแอปมือถือ",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
+            )
+
+            Spacer(Modifier.height(16.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+            Spacer(Modifier.height(10.dp))
+
+            Text(
+                "คอมพิวเตอร์ · CUA",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                "สมอง AI ใช้โมเดลที่เลือกด้านบน ส่วน CUA เป็นเครื่องมือให้ Bot ใช้หน้าจอและแอปบนคอมพิวเตอร์ ไม่ใช่โมเดล AI อีกตัว",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
+            )
+            if (loadingComputer) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 8.dp)) {
+                    CircularProgressIndicator(Modifier.height(16.dp).padding(end = 8.dp), strokeWidth = 2.dp)
+                    Text("กำลังอ่านการตั้งค่าคอมพิวเตอร์…", style = MaterialTheme.typography.bodySmall)
+                }
+            } else {
+                val computerChoices = listOf(
+                    "auto" to "อัตโนมัติ",
+                    "local" to "คอมพิวเตอร์เครื่องนี้ · CUA",
+                    "cloud" to "คอมพิวเตอร์คลาวด์",
+                    "vm" to "Local VM แยกพื้นที่",
+                    "browser" to "เบราว์เซอร์",
+                    "off" to "ปิดการใช้คอมพิวเตอร์",
+                )
+                computerChoices.forEach { (value, label) ->
+                    val selected = computerMode == value
+                    Row(
+                        Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        TextButton(
+                            onClick = {
+                                val storedValue = if (value == "auto") JSONObject.NULL else value
+                                Repo.patchBot(bot.id, JSONObject().put("computer", storedValue))
+                                computerMode = value
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(
+                                label,
+                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.weight(1f),
+                            )
+                            if (selected) Text(
+                                "เลือกอยู่",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                    }
+                }
+                if (computerMode == "local") {
+                    Text(
+                        "Host ที่รัน OpenMausBot ต้องเปิดอยู่ และต้องอนุญาต CUA บนเครื่อง Host ก่อน โทรศัพท์เป็นรีโมต ไม่ได้รัน CUA เอง",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                } else if (computerMode == "cloud") {
+                    Text(
+                        "ใช้คอมพิวเตอร์คลาวด์ที่ Host ตั้งค่าไว้ การสร้างหรือเปิดเครื่องคลาวด์อาจมีค่าใช้จ่ายจากผู้ให้บริการ",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
                 }
             }
 
