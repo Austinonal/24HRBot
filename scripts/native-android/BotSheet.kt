@@ -307,7 +307,7 @@ fun BotSheet(
                             }
                         }
                     },
-                ) { Text("แชตใหม่") }
+                ) { Text("新对话") }
                 TextButton(
                     onClick = {
                         Repo.patchBot(bot.id, JSONObject().put("hidden", true))
