@@ -41,6 +41,9 @@ jobs:
       - name: Apply Thai UI and Android security patches
         run: node scripts/patch-native-android.mjs native-client-source/apps/android
 
+      - name: Copy the original OpenMausBot desktop logo
+        run: cp build/icon-1024.png native-client-source/apps/android/app/src/main/res/drawable/mausbot_logo.png
+
       - name: Verify Android security posture
         run: node scripts/check-native-android-security.mjs native-client-source/apps/android
 
@@ -65,15 +68,15 @@ jobs:
       - name: Copy APK
         run: |
           mkdir -p dist
-          cp native-client-source/apps/android/app/build/outputs/apk/debug/app-debug.apk dist/OpenMausBot-Android-Thai-Grok-UI-debug.apk
-          sha256sum dist/OpenMausBot-Android-Thai-Grok-UI-debug.apk > dist/SHA256SUMS.txt
+          cp native-client-source/apps/android/app/build/outputs/apk/debug/app-debug.apk dist/OpenMausBot-Android-Grok-Inspired-debug.apk
+          sha256sum dist/OpenMausBot-Android-Grok-Inspired-debug.apk > dist/SHA256SUMS.txt
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: OpenMausBot-Android-Thai-Grok-UI-debug
+          name: OpenMausBot-Android-Grok-Inspired-debug
           path: |
-            dist/OpenMausBot-Android-Thai-Grok-UI-debug.apk
+            dist/OpenMausBot-Android-Grok-Inspired-debug.apk
             dist/SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 30

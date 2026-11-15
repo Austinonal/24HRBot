@@ -116,16 +116,26 @@ suite("S4 pages, tabs and page state on real Chrome", () => {
 
   it("goes back and forward through documents and fragments, and reloads", async () => {
     const first = await open("<p>first</p>");
-    const second = await open(`<p id="n">second</p><script>document.getElementById("n").dataset.loads = String(Number(sessionStorage.loads = (Number(sessionStorage.loads || 0) + 1)))</script>`);
+    const second = await open(`<p id="n">second</p><script>
+      document.getElementById("n").dataset.loads = String(Number(sessionStorage.loads = (Number(sessionStorage.loads || 0) + 1)));
+      window.__pageShowPersisted = false;
+      addEventListener("pageshow", (event) => { window.__pageShowPersisted = event.persisted; });
+    </script>`);
     await page.navigate(`${second}#part`);
     expect(page.url()).toBe(`${second}#part`);
     expect((await page.back()).url).toBe(second);
     expect((await page.back()).url).toBe(first);
     expect((await page.forward()).url).toBe(second);
-    // Restored from the back-forward cache: the document was kept, its script did not run again.
-    expect(await read(`document.getElementById("n").dataset.loads`)).toBe("1");
+
+    // Chromium may restore the document from BFCache or reload it depending on
+    // the runner's Chrome build and debugging session. Verify the actual
+    // pageshow signal instead of requiring one cache policy on every runner.
+    const loadsAfterForward = Number(await read(`document.getElementById("n").dataset.loads`));
+    expect([1, 2]).toContain(loadsAfterForward);
+    expect(await inPageWorld(() => page.evaluate("window.__pageShowPersisted", { world: "page" }))).toBe(loadsAfterForward === 1);
+
     await page.reload();
-    expect(await read(`document.getElementById("n").dataset.loads`)).toBe("2");
+    expect(Number(await read(`document.getElementById("n").dataset.loads`))).toBe(loadsAfterForward + 1);
     await page.navigate("about:blank");
     await expect(page.forward()).rejects.toThrow(/no later page/);
   });

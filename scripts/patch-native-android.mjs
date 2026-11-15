@@ -38,6 +38,18 @@ await copyTemplate(
   "scripts/native-android/DeviceStore.kt",
   "app/src/main/java/org/openmausbot/android/data/DeviceStore.kt",
 );
+await copyTemplate(
+  "scripts/native-android/HomeScreen.kt",
+  "app/src/main/java/org/openmausbot/android/ui/HomeScreen.kt",
+);
+await copyTemplate(
+  "scripts/native-android/RoutinesScreen.kt",
+  "app/src/main/java/org/openmausbot/android/ui/RoutinesScreen.kt",
+);
+await copyTemplate(
+  "scripts/native-android/InboxScreen.kt",
+  "app/src/main/java/org/openmausbot/android/ui/InboxScreen.kt",
+);
 
 const localization = {
   "app/src/main/java/org/openmausbot/android/ui/HomeScreen.kt": [
@@ -169,35 +181,9 @@ const localization = {
 
 for (const [relativePath, pairs] of Object.entries(localization)) {
   // ChatScreen.kt is supplied as a Thai-first redesigned template.
-  if (relativePath.endsWith("/ChatScreen.kt")) continue;
+  if (relativePath.endsWith("/ChatScreen.kt") || relativePath.endsWith("/HomeScreen.kt")) continue;
   await replacePairs(relativePath, pairs);
 }
-
-const homePath = path.join(appRoot, "app/src/main/java/org/openmausbot/android/ui/HomeScreen.kt");
-let home = await readFile(homePath, "utf8");
-const oldHomeIntro = `        Column(Modifier.fillMaxSize().padding(padding)) {
-            TabRow(selectedTabIndex = tab, containerColor = MaterialTheme.colorScheme.background) {
-`;
-const newHomeIntro = `        Column(Modifier.fillMaxSize().padding(padding)) {
-            Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp)) {
-                Text(
-                    "ทีม AI ของคุณ",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Text(
-                    "เลือก Bot เพื่อเริ่มสนทนา หรือเปิดห้องสำหรับคุยร่วมกัน",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 5.dp),
-                )
-            }
-            TabRow(selectedTabIndex = tab, containerColor = MaterialTheme.colorScheme.background) {
-`;
-if (!home.includes(oldHomeIntro)) throw new Error("HomeScreen intro insertion anchor missing");
-home = home.replace(oldHomeIntro, newHomeIntro);
-await writeFile(homePath, home, "utf8");
-console.log("added a Thai-first home heading");
 
 const apiPath = path.join(appRoot, "app/src/main/java/org/openmausbot/android/data/ApiClient.kt");
 let api = await readFile(apiPath, "utf8");
@@ -310,6 +296,7 @@ console.log("restricted non-HTTPS endpoints to private/local routes");
 const manifestPath = path.join(appRoot, "app/src/main/AndroidManifest.xml");
 let manifest = await readFile(manifestPath, "utf8");
 manifest = manifest.replace('    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />\n', "");
+manifest = manifest.replace('android:icon="@drawable/ic_launcher"', 'android:icon="@drawable/mausbot_logo"');
 manifest = manifest.replace('    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"\n        android:maxSdkVersion="32" />\n', "");
 manifest = manifest.replace(
   "    <application\n",
