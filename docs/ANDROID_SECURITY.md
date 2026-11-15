@@ -12,6 +12,15 @@ The Android companion uses a Grok-inspired interaction pattern rather than copyi
 
 The app still requires a pairing step because it is a companion for a desktop OpenMausBot instance; it is not a standalone AI service. After a successful pairing, the app opens the bot list and chat experience.
 
+The **AI accounts** screen is also a companion-only surface. It reads provider
+status from the paired Host and may start, poll, or cancel only the primary
+Codex device-code sign-in. It validates the provider URL and short-lived code
+before opening or displaying them. The phone cannot read provider credentials,
+change engine configuration, sign out, or initiate browser OAuth callbacks.
+Claude consumer sign-in and Google Antigravity sign-in are not offered in this
+screen because both services require users to be at least 18; a self-attested
+checkbox is not an age-verification method.
+
 ## Security controls in this build
 
 - Pairing credentials are exchanged for a revocable device token.
