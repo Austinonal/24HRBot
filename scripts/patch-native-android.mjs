@@ -46,6 +46,10 @@ await copyTemplate(
   "scripts/native-android/RoutinesScreen.kt",
   "app/src/main/java/org/openmausbot/android/ui/RoutinesScreen.kt",
 );
+await copyTemplate(
+  "scripts/native-android/InboxScreen.kt",
+  "app/src/main/java/org/openmausbot/android/ui/InboxScreen.kt",
+);
 
 const localization = {
   "app/src/main/java/org/openmausbot/android/ui/HomeScreen.kt": [
