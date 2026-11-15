@@ -62,8 +62,20 @@ fun HomeScreen() {
     BackHandler(selection == null && drawer.isOpen) { scope.launch { drawer.close() } }
 
     if (settings) { SettingsScreen(onClose = { settings = false }); return }
-    selection?.let {
-        ChatScreen(it, onBack = { selection = null }, onOpenSettings = { settings = true })
+    selection?.let { current ->
+        ChatScreen(
+            selection = current,
+            onBack = { selection = null },
+            onOpenSettings = { settings = true },
+            onChangeThread = { threadId ->
+                selection = when (val target = selection) {
+                    is Selection.BotTarget -> target.copy(threadId = threadId)
+                    is Selection.GroupTarget -> target.copy(threadId = threadId)
+                    null -> null
+                }
+                Repo.openThread(threadId)
+            },
+        )
         return
     }
 
