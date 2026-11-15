@@ -345,7 +345,7 @@ fun AccountsScreen(onClose: () -> Unit) {
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
-                        !hasCodexDeviceLogin && !codex.authenticated -> {
+                        !hasCodexDeviceLogin && codex?.authenticated != true -> {
                             Text(
                                 "บัญชีนี้ใช้วิธีเข้าสู่ระบบที่ต้องเริ่มบนคอมพิวเตอร์ จึงไม่สามารถเริ่มจากโทรศัพท์ได้",
                                 style = MaterialTheme.typography.bodySmall,
