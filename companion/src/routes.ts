@@ -84,6 +84,10 @@ const ALLOWED: ReadonlyArray<{ method: string; path: RegExp }> = [
   { method: "GET", path: /^\/api\/config$/ },
   { method: "GET", path: /^\/api\/events$/ },
   { method: "GET", path: /^\/api\/instances$/ },
+  // A paired phone may only start, poll and cancel the primary Codex device-code login.
+  // It cannot open browser OAuth, read credentials, edit provider settings or sign out accounts.
+  { method: "POST", path: /^\/api\/instances\/codex\/auth\/(?:start|cancel)$/ },
+  { method: "GET", path: /^\/api\/instances\/codex\/auth\/status$/ },
   // The harness refuses it while any Claude turn runs. Instance ids may carry
   // dots, so a dots-only segment is refused outright.
   { method: "POST", path: /^\/api\/instances\/(?!\.+\/)[\w.-]+\/claude-update$/ },
