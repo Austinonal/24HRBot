@@ -1,4 +1,4 @@
-# Android companion: UI and security notes
+# Android app: cloud-server client and security notes
 
 ## Interface direction
 
@@ -6,14 +6,17 @@ The Android companion uses a Grok-inspired interaction pattern rather than copyi
 
 - Dark-first, low-distraction canvas with high-contrast text.
 - A short onboarding / pairing screen with one primary QR action and a secondary paste-link path.
-- Explicit confirmation of the computer name and address before pairing.
+- Explicit confirmation of the OpenMausBot Server name and HTTPS address before pairing.
 - Minimal message surfaces and a persistent message composer in chat.
 - Thai interface copy for controls, status labels, pairing, and approvals. Bot-generated content remains in the language returned by the selected model.
 
-The app still requires a pairing step because it is a companion for a desktop OpenMausBot instance; it is not a standalone AI service. After a successful pairing, the app opens the bot list and chat experience.
+The Android app is a native mobile client, not a local AI runtime. **A Windows desktop .exe is not required on the user's personal PC.** The AI engines, Bot processes, scheduler, API and persistent workspace must still run on an always-on OpenMausBot Server. That server can be deployed on a supported VPS or another always-on Linux host, so the user's own PC can remain off after setup.
 
-The **AI accounts** screen is also a companion-only surface. It reads provider
-status from the paired Host and may start, poll, or cancel only the primary
+For a cloud-first setup, deploy the OpenMausBot Server using [the VPS deployment guide](deploy-vps.md), then pair the Android app with a server-issued QR/deep link that advertises a reachable HTTPS endpoint. The server, not the phone, stores provider sign-ins, Bot state and chat history. The phone keeps only its revocable device token, encrypted with Android Keystore.
+
+The pinned Android client supports direct pairing to a reachable HTTPS server endpoint. **Relay-only pairing QR codes are not yet verified end to end in this Android build.** Until that path is implemented and tested on a physical phone, use a normal HTTPS server address or supported HTTPS tunnel for pairing; do not assume a relay-only QR will work. The Android app itself does not provision or pay for the cloud server.
+
+The **AI accounts** screen reads provider status from the paired OpenMausBot Server and may start, poll, or cancel only the primary
 Codex device-code sign-in. It validates the provider URL and short-lived code
 before opening or displaying them. The phone cannot read provider credentials,
 change engine configuration, sign out, or initiate browser OAuth callbacks.
