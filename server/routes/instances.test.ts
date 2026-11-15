@@ -75,6 +75,79 @@ async function serve(extra: Partial<InstanceRouteDeps> = {}, auth: RequestAuth =
 }
 
 describe("engine sign-in routes", () => {
+  it("scopes a paired phone to the primary Codex device-code login and binds the flow to that phone", async () => {
+    const fake = makeFakeDriver();
+    const registry = new ProviderRegistry([fake.driver]);
+    await registry.load({ a: { driver: "fake" }, codex: { driver: "fake" } });
+    let cancelled = false;
+    Object.assign(registry.get("codex")!, {
+      driverKind: "codex",
+      startAuthentication: async () => ({
+        phase: "waiting", flowId: "phone-flow", authorizationUrl: "https://auth.openai.com/codex/device",
+        userCode: "ABCD-EFGH", expiresAt: null,
+      }),
+      getAuthentication: async () => ({
+        phase: "waiting", flowId: "phone-flow", authorizationUrl: "https://auth.openai.com/codex/device",
+        userCode: "ABCD-EFGH", expiresAt: null,
+      }),
+      completeAuthentication: undefined,
+      cancelAuthentication: async () => { cancelled = true; },
+      authenticationMethod: undefined,
+    });
+    const sessions = new ProviderAuthSessions();
+    const deps = {
+      store: { bots: [], tasks: () => [] },
+      cfg: { instances: { a: { driver: "fake" }, codex: { driver: "fake" } } } as unknown as AppConfig,
+      registry,
+      sessions: { isLive: () => true },
+      providerAuthSessions: sessions,
+      hostedModels: false,
+      providerConfigBusy: { get: () => false, set: () => {} },
+      providerInstancesChanging: new Set<string>(),
+      describeInstances: () => [],
+      threadBusy: () => false,
+      botForThread: () => null,
+      activeGroupTurnForBot: () => null,
+    } as unknown as InstanceRouteDeps;
+    const routes = [createInstanceRoutes(deps)];
+    let auth: RequestAuth = { kind: "loopback", scopes: ["admin"], companionDevice: "phone-a" };
+    const server = createServer(async (req, res) => {
+      const url = new URL(req.url ?? "/", "http://localhost");
+      const handled = await dispatchRoutes(routes, {
+        req, res, url, path: url.pathname, method: req.method ?? "GET", auth, json, readBody,
+      });
+      if (!handled) json(res, 404, { from: "inline routes" });
+    });
+    servers.push(server);
+    await new Promise<void>((ready) => server.listen(0, "127.0.0.1", ready));
+    const base = "http://127.0.0.1:" + (server.address() as AddressInfo).port;
+    const request = async (method: string, path: string, body?: unknown) => {
+      const response = await fetch(base + path, {
+        method,
+        headers: { "content-type": "application/json" },
+        body: body === undefined ? undefined : JSON.stringify(body),
+      });
+      return { status: response.status, body: await response.json() as Record<string, any> };
+    };
+
+    expect((await request("POST", "/api/instances/a/auth/start", {})).status).toBe(403);
+    const started = await request("POST", "/api/instances/codex/auth/start", {});
+    expect(started.status).toBe(200);
+    expect(started.body.auth).toMatchObject({ phase: "waiting", flowId: "phone-flow", userCode: "ABCD-EFGH" });
+    const status = await request("GET", "/api/instances/codex/auth/status?flowId=phone-flow");
+    expect(status.status).toBe(200);
+    expect(status.body.auth.phase).toBe("waiting");
+
+    auth = { kind: "loopback", scopes: ["admin"], companionDevice: "phone-b" };
+    const otherPhone = await request("GET", "/api/instances/codex/auth/status?flowId=phone-flow");
+    expect(otherPhone.status).toBe(404);
+
+    auth = { kind: "loopback", scopes: ["admin"], companionDevice: "phone-a" };
+    const cancelledResponse = await request("POST", "/api/instances/codex/auth/cancel", { flowId: "phone-flow" });
+    expect(cancelledResponse.status).toBe(200);
+    expect(cancelled).toBe(true);
+  });
+
   it("probe the engine again after a sign-in that finished at once, a device sign-in, a pasted code or a sign-out", async () => {
     const { sign, call, probesAfterList } = await serve();
     expect(await probesAfterList()).toBe(1);
