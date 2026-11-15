@@ -27,7 +27,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.net.URLEncoder
 import org.openmausbot.android.R
 import org.openmausbot.android.data.Bot
 import org.openmausbot.android.data.ConnectionState
@@ -177,8 +181,14 @@ fun HomeScreen() {
                     }
                     MainPage.ROUTINES -> RoutinesScreen()
                     MainPage.SEARCH -> SearchPage(
-                        onBot = { bot -> selection = Selection.BotTarget(bot); Repo.openThread(bot.activeTask?.threadId ?: bot.threadId) },
-                        onGroup = { group -> selection = Selection.GroupTarget(group); Repo.openThread(group.threadId) },
+                        onBot = { bot, threadId ->
+                            selection = Selection.BotTarget(bot, threadId)
+                            Repo.openThread(threadId)
+                        },
+                        onGroup = { group, threadId ->
+                            selection = Selection.GroupTarget(group, threadId)
+                            Repo.openThread(threadId)
+                        },
                     )
                 }
             }
@@ -244,38 +254,198 @@ private fun ChatsPage(onBot: (Bot) -> Unit, onGroup: (Group) -> Unit) {
     }
 }
 
+private data class MobileSearchHit(
+    val threadId: String,
+    val messageId: String,
+    val at: Long,
+    val role: String,
+    val kind: String,
+    val snippet: String,
+    val name: String,
+    val task: String?,
+    val botId: String?,
+    val groupId: String?,
+    val onActivePath: Boolean,
+)
+
+private fun parseMobileSearchHits(answer: org.json.JSONObject): List<MobileSearchHit> {
+    val rows = answer.optJSONArray("hits") ?: return emptyList()
+    return buildList {
+        for (index in 0 until rows.length()) {
+            val row = rows.optJSONObject(index) ?: continue
+            val threadId = row.optString("threadId").takeIf { it.isNotBlank() } ?: continue
+            val messageId = row.optString("messageId").takeIf { it.isNotBlank() } ?: continue
+            add(
+                MobileSearchHit(
+                    threadId = threadId,
+                    messageId = messageId,
+                    at = row.optLong("at"),
+                    role = row.optString("role", "assistant"),
+                    kind = row.optString("kind", "text"),
+                    snippet = row.optString("snippet"),
+                    name = row.optString("name", "OpenMausBot"),
+                    task = row.optString("task").takeIf { it.isNotBlank() && it != "null" },
+                    botId = row.optString("botId").takeIf { it.isNotBlank() && it != "null" },
+                    groupId = row.optString("groupId").takeIf { it.isNotBlank() && it != "null" },
+                    onActivePath = row.optBoolean("onActivePath", true),
+                )
+            )
+        }
+    }
+}
+
 @Composable
-private fun SearchPage(onBot: (Bot) -> Unit, onGroup: (Group) -> Unit) {
+private fun SearchPage(
+    onBot: (Bot, String) -> Unit,
+    onGroup: (Group, String) -> Unit,
+) {
     var query by rememberSaveable { mutableStateOf("") }
-    val term = query.trim().lowercase()
-    val bots = Repo.bots.filterNot { it.hidden }.filter {
-        term.isBlank() || it.name.lowercase().contains(term) || it.subtitle.lowercase().contains(term)
+    var hits by remember { mutableStateOf<List<MobileSearchHit>>(emptyList()) }
+    var loading by remember { mutableStateOf(false) }
+    var searched by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val term = query.trim()
+    val computerId = Repo.computer?.id
+
+    LaunchedEffect(term, computerId) {
+        if (term.length < 2) {
+            hits = emptyList()
+            searched = false
+            error = null
+            loading = false
+            return@LaunchedEffect
+        }
+        if (computerId == null) {
+            hits = emptyList()
+            searched = true
+            error = "เชื่อมต่อคอมพิวเตอร์ก่อนจึงจะค้นหาประวัติแชตได้"
+            return@LaunchedEffect
+        }
+        delay(250)
+        loading = true
+        error = null
+        try {
+            val response = withContext(Dispatchers.IO) {
+                val encoded = URLEncoder.encode(term, Charsets.UTF_8.name())
+                ApiAccess.get("/api/search?q=$encoded&limit=40")
+            }
+            hits = parseMobileSearchHits(response)
+            searched = true
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            hits = emptyList()
+            searched = true
+            error = e.message ?: "ค้นหาข้อความไม่สำเร็จ"
+        } finally {
+            loading = false
+        }
     }
-    val groups = Repo.groups.filter {
-        term.isBlank() || it.name.lowercase().contains(term) || it.subtitle.lowercase().contains(term)
-    }
+
     Column(Modifier.fillMaxSize().padding(horizontal = 18.dp, vertical = 14.dp)) {
-        Text("ค้นหา Bot และห้องแชต", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
-        OutlinedTextField(value = query, onValueChange = { query = it },
-            modifier = Modifier.fillMaxWidth().padding(top = 14.dp, bottom = 12.dp),
-            singleLine = true, leadingIcon = { Icon(Icons.Default.Search, null) },
-            placeholder = { Text("พิมพ์ชื่อ Bot หรือห้องแชต") }, shape = RoundedCornerShape(24.dp))
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-            if (bots.isNotEmpty()) {
-                item { SectionHeading("BOTS", bots.size) }
-                items(bots, key = { "search-bot:" + it.id }) { BotRow(it) { onBot(it) } }
+        Text("ค้นหาบทสนทนา", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+        Text(
+            "ค้นหาข้อความในแชตของ Bot และห้องที่คุณมีสิทธิ์เข้าถึง",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+        OutlinedTextField(
+            value = query,
+            onValueChange = { query = it },
+            modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 10.dp),
+            singleLine = true,
+            leadingIcon = { Icon(Icons.Default.Search, null) },
+            placeholder = { Text("ค้นหาคำหรือวลีในข้อความ") },
+            shape = RoundedCornerShape(24.dp),
+        )
+        when {
+            loading -> Row(
+                Modifier.fillMaxWidth().padding(vertical = 14.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                Text("กำลังค้นหา…", style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 9.dp))
             }
-            if (groups.isNotEmpty()) {
-                item { SectionHeading("GROUP CHATS", groups.size) }
-                items(groups, key = { "search-group:" + it.id }) { GroupRow(it) { onGroup(it) } }
-            }
-            if (term.isNotBlank() && bots.isEmpty() && groups.isEmpty()) item {
-                EmptyState("ไม่พบรายการ", "ลองค้นหาด้วยชื่อ Bot หรือชื่อห้องอื่น")
-            }
-            if (term.isBlank()) item {
-                Text("ค้นหาจากรายชื่อ Bot และห้องแชตที่ซิงก์อยู่ในขณะนี้",
-                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 12.dp))
+            error != null -> Text(
+                error ?: "",
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(vertical = 12.dp),
+            )
+            term.length < 2 -> Text(
+                "พิมพ์อย่างน้อย 2 ตัวอักษรเพื่อค้นหาข้อความ",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+            searched && hits.isEmpty() -> EmptyState("ไม่พบข้อความ", "ลองใช้คำค้นหาอื่น หรือค้นหาด้วยวลีที่สั้นลง")
+            else -> LazyColumn(
+                Modifier.weight(1f),
+                contentPadding = PaddingValues(top = 4.dp, bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                items(hits, key = { it.threadId + ":" + it.messageId }) { hit ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth().clickable {
+                            val bot = hit.botId?.let { id -> Repo.bots.firstOrNull { it.id == id && !it.hidden } }
+                            val group = hit.groupId?.let { id -> Repo.groups.firstOrNull { it.id == id } }
+                            when {
+                                bot != null -> onBot(bot, hit.threadId)
+                                group != null -> onGroup(group, hit.threadId)
+                                else -> error = "ไม่พบบทสนทนาต้นทาง อาจถูกซ่อนหรือลบไปแล้ว"
+                            }
+                        },
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    ) {
+                        Column(Modifier.padding(14.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(hit.name, style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f),
+                                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(
+                                    runCatching { java.text.SimpleDateFormat("d MMM · HH:mm", java.util.Locale.getDefault()).format(java.util.Date(hit.at)) }.getOrDefault(""),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            if (!hit.task.isNullOrBlank()) {
+                                Text(hit.task, style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(top = 3.dp))
+                            }
+                            Text(
+                                hit.snippet,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = if (hit.role == "user") MaterialTheme.colorScheme.onSurface
+                                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 3,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.padding(top = 7.dp),
+                            )
+                            Row(Modifier.fillMaxWidth().padding(top = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    if (hit.role == "user") "ข้อความของคุณ" else if (hit.kind == "activity") "กิจกรรมของ Bot" else "ข้อความจาก Bot",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Spacer(Modifier.weight(1f))
+                                if (!hit.onActivePath) Text(
+                                    "ข้อความจากเวอร์ชันก่อนหน้า",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Text("เปิดแชต  ›", style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(start = 8.dp))
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -369,8 +539,8 @@ private fun NewBotDialog(onDismiss: () -> Unit, onCreate: (String) -> Unit) {
 }
 
 sealed interface Selection {
-    data class BotTarget(val bot: Bot) : Selection
-    data class GroupTarget(val group: Group) : Selection
+    data class BotTarget(val bot: Bot, val threadId: String? = null) : Selection
+    data class GroupTarget(val group: Group, val threadId: String? = null) : Selection
 }
 
 @Composable
