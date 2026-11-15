@@ -166,11 +166,6 @@ fun AccountsScreen(onClose: () -> Unit) {
     }
 
     val codex = accounts.firstOrNull { it.instanceId == "codex" }
-    val google = accounts.firstOrNull {
-        it.driverKind.contains("antigravity", ignoreCase = true) ||
-            it.displayName.contains("Antigravity", ignoreCase = true) ||
-            it.displayName.contains("Google Gemini", ignoreCase = true)
-    }
     val hasCodexDeviceLogin = codex?.authMethod == "device-code"
 
     Scaffold(
@@ -365,20 +360,12 @@ fun AccountsScreen(onClose: () -> Unit) {
 
                 AccountCard(
                     title = "Google · Gemini",
-                    subtitle = "บัญชี Google ผ่าน Google Antigravity ที่ Host เชื่อมต่อไว้",
-                    connected = google?.authenticated == true,
-                    detail = when {
-                        google?.authenticated == true -> google.email ?: "บัญชี Google เชื่อมต่อแล้ว"
-                        google == null -> "ยังไม่พบ Google Antigravity engine"
-                        else -> "ยังไม่ได้อนุญาตบัญชี Google"
-                    },
+                    subtitle = "ข้อจำกัดการเข้าสู่ระบบด้วยบัญชี Google",
+                    connected = false,
+                    detail = "ไม่เปิด Google Antigravity sign-in ใน Companion นี้",
                 ) {
                     Text(
-                        if (google?.authenticated == true) {
-                            "บัญชีนี้พร้อมให้ Bot เลือกใช้โมเดล Gemini ที่ Host เปิดให้ใช้งาน"
-                        } else {
-                            "การอนุญาต Google จะเปิด browser และรับ callback ที่คอมพิวเตอร์ Host โปรดเริ่ม Sign in with Google บนคอมพิวเตอร์ แล้วกลับมากดรีเฟรชที่นี่",
-                        },
+                        "OpenMausBot ใช้ Google Antigravity เป็นทางล็อกอินบัญชี Google สำหรับ Gemini ใน Host แต่ Google ระบุว่า Antigravity ไม่พร้อมให้ผู้มีอายุต่ำกว่า 18 ปีใช้งาน จึงไม่มีปุ่มเข้าสู่ระบบหรือช่องติ๊กยืนยันอายุเพื่อข้ามข้อกำหนด",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
