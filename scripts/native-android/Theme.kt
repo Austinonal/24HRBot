@@ -14,10 +14,10 @@ import androidx.compose.ui.unit.sp
 import org.openmausbot.android.data.Repo
 
 private val Dark = darkColorScheme(
-    primary = Color(0xFFF1F2F4),
-    onPrimary = Color(0xFF111215),
-    primaryContainer = Color(0xFF292C32),
-    onPrimaryContainer = Color(0xFFF3F4F6),
+    primary = Color(0xFF8AB4F8),
+    onPrimary = Color(0xFF071321),
+    primaryContainer = Color(0xFF233B59),
+    onPrimaryContainer = Color(0xFFDCE9FF),
     secondary = Color(0xFFB4BAC4),
     onSecondary = Color(0xFF15171B),
     secondaryContainer = Color(0xFF252930),
@@ -34,10 +34,10 @@ private val Dark = darkColorScheme(
 )
 
 private val Light = lightColorScheme(
-    primary = Color(0xFF17191D),
+    primary = Color(0xFF245EA8),
     onPrimary = Color.White,
-    primaryContainer = Color(0xFFE5E7EB),
-    onPrimaryContainer = Color(0xFF17191D),
+    primaryContainer = Color(0xFFDCE8FA),
+    onPrimaryContainer = Color(0xFF142A45),
     secondary = Color(0xFF525B67),
     onSecondary = Color.White,
     background = Color(0xFFF7F8FA),
