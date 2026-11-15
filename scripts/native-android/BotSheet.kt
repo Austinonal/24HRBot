@@ -446,6 +446,7 @@ object ApiAccess {
     fun post(path: String, body: JSONObject): JSONObject = api()?.post(path, body) ?: JSONObject()
     fun patch(path: String, body: JSONObject): JSONObject = api()?.patch(path, body) ?: JSONObject()
     fun delete(path: String): JSONObject = api()?.delete(path) ?: JSONObject()
+    fun text(path: String): String = api()?.let { String(it.bytes(path), Charsets.UTF_8) }.orEmpty()
 }
 
 /** Model catalogs differ per engine: instances carry either `models` or a
