@@ -64,7 +64,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
 import org.openmausbot.android.data.Attachment
 import org.openmausbot.android.data.Message
 import org.openmausbot.android.data.Repo
@@ -255,6 +258,19 @@ fun ChatScreen(
                                 bot?.let { Repo.alwaysAllow(it.id, threadId, card) }
                             }
                         },
+                        onReact = { emoji ->
+                            scope.launch {
+                                runCatching {
+                                    withContext(Dispatchers.IO) {
+                                        ApiAccess.post(
+                                            "/api/threads/$threadId/messages/${message.id}/reactions",
+                                            JSONObject().put("emoji", emoji).put("on", true),
+                                        )
+                                    }
+                                    Repo.loadThread(threadId, force = true)
+                                }
+                            }
+                        },
                     )
                 }
                 item { Spacer(Modifier.height(8.dp)) }
@@ -366,6 +382,7 @@ private fun MessageRow(
     message: Message,
     onAnswer: (String) -> Unit,
     onAlwaysAllow: () -> Unit,
+    onReact: (String) -> Unit,
 ) {
     when {
         message.kind == "activity" || message.tool != null -> {
@@ -433,6 +450,24 @@ private fun MessageRow(
                 Column(Modifier.fillMaxWidth().padding(end = 4.dp)) {
                     if (message.text.isNotBlank()) Markdown(message.text)
                     message.attachments.forEach { AttachmentView(it) }
+                }
+                if (message.kind == "text" && message.text.isNotBlank() && !message.pending) {
+                    Row(
+                        Modifier.padding(top = 5.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        listOf("👍", "👎", "❤️", "😂", "🎉", "👀").forEach { emoji ->
+                            Surface(
+                                modifier = Modifier.clickable { onReact(emoji) },
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f),
+                                shape = CircleShape,
+                            ) {
+                                Text(emoji, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    fontSize = 13.sp)
+                            }
+                        }
+                    }
                 }
             }
         }
