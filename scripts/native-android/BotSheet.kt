@@ -1,0 +1,479 @@
+package org.openmausbot.android.ui
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
+import org.openmausbot.android.data.ApiClient
+import org.openmausbot.android.data.currentBaseUrl
+import org.openmausbot.android.data.Bot
+import org.openmausbot.android.data.Task
+import org.openmausbot.android.data.Repo
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun BotSheet(
+    bot: Bot,
+    currentThreadId: String,
+    onOpenThread: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val scope = rememberCoroutineScope()
+    var name by remember(bot.id) { mutableStateOf(bot.name) }
+    var model by remember(bot.id) { mutableStateOf(bot.modelSelection?.model ?: "") }
+    var models by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
+    var loadingModels by remember { mutableStateOf(true) }
+    var notifications by remember(bot.id) { mutableStateOf(bot.notifications) }
+    var taskMenuFor by remember { mutableStateOf<String?>(null) }
+    var renameTask by remember { mutableStateOf<Task?>(null) }
+    var deleteTask by remember { mutableStateOf<Task?>(null) }
+    var renameTitle by remember { mutableStateOf("") }
+    var taskActionError by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(bot.id) {
+        val list = withContext(Dispatchers.IO) {
+            runCatching {
+                val answer = Repo.let {
+                    // /api/instances lists the engines this computer can run.
+                    ApiAccess.get("/api/instances")
+                }
+                parseModels(answer)
+            }.getOrDefault(emptyList())
+        }
+        models = list
+        loadingModels = false
+        if (model.isBlank()) model = bot.modelSelection?.model ?: ""
+    }
+
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .heightIn(max = 640.dp)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 28.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                BotAvatar(bot.name, bot.color, working = bot.busy)
+                Column(Modifier.padding(start = 12.dp)) {
+                    Text(bot.name, style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        bot.modelSelection?.let { "${it.instanceId} · ${it.model}" } ?: "未选择模型",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(18.dp))
+            Text("名称", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it.take(60) },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f).padding(top = 6.dp),
+                )
+                TextButton(
+                    onClick = {
+                        if (name.isNotBlank() && name != bot.name) {
+                            Repo.patchBot(bot.id, JSONObject().put("name", name.trim()))
+                        }
+                    },
+                    enabled = name.isNotBlank() && name != bot.name,
+                ) { Text("保存") }
+            }
+
+            Spacer(Modifier.height(16.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+            Spacer(Modifier.height(14.dp))
+
+            Text("模型", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (loadingModels) {
+                Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    CircularProgressIndicator(Modifier.height(16.dp).padding(end = 8.dp), strokeWidth = 2.dp)
+                    Text("正在读取这台电脑的模型…", style = MaterialTheme.typography.bodyMedium)
+                }
+            } else if (models.isEmpty()) {
+                Text(
+                    "当前连接无法获取模型列表，请在电脑上切换模型。",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            } else {
+                models.forEach { (instanceId, modelName) ->
+                    val selected = modelName == model
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        TextButton(
+                            onClick = {
+                                model = modelName
+                                Repo.setModel(bot.id, instanceId, modelName, null)
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(
+                                modelName,
+                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.weight(1f),
+                            )
+                            Text(
+                                instanceId,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+            Spacer(Modifier.height(10.dp))
+
+            Text(
+                "บทสนทนา",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                "สลับไปยังแชตเก่าของ Bot นี้ได้",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp, bottom = 7.dp),
+            )
+            val conversations = bot.tasks.sortedByDescending { it.updatedAt ?: it.createdAt ?: 0L }
+            if (conversations.isEmpty()) {
+                Text(
+                    "ยังไม่มีบทสนทนาอื่น",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(vertical = 8.dp),
+                )
+            } else {
+                conversations.forEach { task ->
+                    val selected = task.threadId == currentThreadId
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        TextButton(
+                            onClick = {
+                                if (!selected) {
+                                    onOpenThread(task.threadId)
+                                    onDismiss()
+                                }
+                            },
+                            modifier = Modifier.weight(1f),
+                            enabled = !selected,
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    task.title.ifBlank { "บทสนทนาใหม่" },
+                                    color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 1,
+                                )
+                                Text(
+                                    when {
+                                        task.busy -> "กำลังทำงาน"
+                                        task.unread -> "มีข้อความใหม่"
+                                        else -> "บทสนทนา"
+                                    },
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            if (selected) {
+                                Text("เปิดอยู่", style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary)
+                            }
+                        }
+                        Box {
+                            IconButton(onClick = { taskMenuFor = task.threadId }) {
+                                Icon(Icons.Default.MoreVert, contentDescription = "เมนูบทสนทนา")
+                            }
+                            DropdownMenu(
+                                expanded = taskMenuFor == task.threadId,
+                                onDismissRequest = { taskMenuFor = null },
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("เปลี่ยนชื่อ") },
+                                    onClick = {
+                                        taskMenuFor = null
+                                        renameTitle = task.title
+                                        renameTask = task
+                                        taskActionError = null
+                                    },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("ลบบทสนทนา") },
+                                    onClick = {
+                                        taskMenuFor = null
+                                        deleteTask = task
+                                        taskActionError = null
+                                    },
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            taskActionError?.let { error ->
+                Text(error, style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 6.dp))
+            }
+
+            Spacer(Modifier.height(12.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+            Spacer(Modifier.height(10.dp))
+
+            SettingSwitch(
+                title = "接收此 Bot 的通知",
+                subtitle = "回复和审批请求会推送到手机",
+                checked = notifications,
+                onChecked = {
+                    notifications = it
+                    Repo.patchBot(bot.id, JSONObject().put("notifications", it))
+                },
+            )
+            SettingSwitch(
+                title = "置顶",
+                subtitle = "让这个 Bot 始终排在列表顶部",
+                checked = bot.pinned,
+                onChecked = { Repo.patchBot(bot.id, JSONObject().put("pinned", it)) },
+            )
+
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TextButton(
+                    onClick = {
+                        taskActionError = null
+                        scope.launch {
+                            try {
+                                val response = withContext(Dispatchers.IO) {
+                                    ApiAccess.post("/api/bots/${bot.id}/tasks", JSONObject())
+                                }
+                                Repo.refreshAll()
+                                val createdThread = response.optJSONObject("task")
+                                    ?.optString("threadId")?.takeIf { it.isNotBlank() }
+                                val fallbackThread = Repo.bots.firstOrNull { it.id == bot.id }?.activeTask?.threadId
+                                (createdThread ?: fallbackThread)?.let(onOpenThread)
+                                onDismiss()
+                            } catch (e: Exception) {
+                                taskActionError = e.message ?: "สร้างบทสนทนาใหม่ไม่สำเร็จ"
+                            }
+                        }
+                    },
+                ) { Text("新对话") }
+                TextButton(
+                    onClick = {
+                        Repo.patchBot(bot.id, JSONObject().put("hidden", true))
+                        onDismiss()
+                    },
+                ) { Text("隐藏 Bot") }
+            }
+        }
+    }
+
+    renameTask?.let { task ->
+        AlertDialog(
+            onDismissRequest = { renameTask = null; taskActionError = null },
+            title = { Text("เปลี่ยนชื่อบทสนทนา") },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = renameTitle,
+                        onValueChange = { renameTitle = it.take(100) },
+                        singleLine = true,
+                        label = { Text("ชื่อบทสนทนา") },
+                    )
+                    taskActionError?.let {
+                        Text(it, color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(top = 8.dp))
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = renameTitle.isNotBlank() && renameTitle.trim() != task.title,
+                    onClick = {
+                        taskActionError = null
+                        scope.launch {
+                            try {
+                                withContext(Dispatchers.IO) {
+                                    ApiAccess.patch(
+                                        "/api/bots/${bot.id}/tasks/${task.threadId}",
+                                        JSONObject().put("title", renameTitle.trim()),
+                                    )
+                                }
+                                Repo.refreshAll()
+                                renameTask = null
+                            } catch (e: Exception) {
+                                taskActionError = e.message ?: "เปลี่ยนชื่อบทสนทนาไม่สำเร็จ"
+                            }
+                        }
+                    },
+                ) { Text("บันทึก") }
+            },
+            dismissButton = {
+                TextButton(onClick = { renameTask = null; taskActionError = null }) { Text("ยกเลิก") }
+            },
+        )
+    }
+
+    deleteTask?.let { task ->
+        AlertDialog(
+            onDismissRequest = { deleteTask = null; taskActionError = null },
+            title = { Text("ลบบทสนทนานี้ไหม?") },
+            text = {
+                Column {
+                    Text("ลบ “${task.title.ifBlank { "บทสนทนาใหม่" }}” ออกจาก Bot นี้ การลบจะย้อนกลับไม่ได้")
+                    taskActionError?.let {
+                        Text(it, color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(top = 8.dp))
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        taskActionError = null
+                        scope.launch {
+                            try {
+                                withContext(Dispatchers.IO) {
+                                    ApiAccess.delete("/api/bots/${bot.id}/tasks/${task.threadId}")
+                                }
+                                Repo.refreshAll()
+                                deleteTask = null
+                                if (task.threadId == currentThreadId) {
+                                    val refreshed = Repo.bots.firstOrNull { it.id == bot.id }
+                                    val nextThread = refreshed?.activeTask?.threadId
+                                        ?.takeIf { it.isNotBlank() && it != task.threadId }
+                                        ?: refreshed?.tasks?.firstOrNull { it.threadId != task.threadId }?.threadId
+                                    if (nextThread != null) onOpenThread(nextThread) else onDismiss()
+                                }
+                            } catch (e: Exception) {
+                                taskActionError = e.message ?: "ลบบทสนทนาไม่สำเร็จ"
+                            }
+                        }
+                    },
+                ) { Text("ลบ") }
+            },
+            dismissButton = {
+                TextButton(onClick = { deleteTask = null; taskActionError = null }) { Text("ยกเลิก") }
+            },
+        )
+    }
+}
+
+@Composable
+fun SettingSwitch(
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onChecked: (Boolean) -> Unit,
+) {
+    Row(
+        Modifier.fillMaxWidth().padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f).padding(end = 10.dp)) {
+            Text(title, style = MaterialTheme.typography.titleMedium)
+            Text(
+                subtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Switch(checked = checked, onCheckedChange = onChecked)
+    }
+}
+
+/** Small indirection so the sheet can talk to the same authenticated client the
+ *  rest of the app uses without exposing it from Repo. */
+object ApiAccess {
+    private fun api(): ApiClient? = Repo.let { repo ->
+        val computer = repo.computer ?: return null
+        ApiClient(computer.currentBaseUrl(), computer.token)
+    }
+
+    fun get(path: String): JSONObject = api()?.get(path) ?: JSONObject()
+    fun post(path: String, body: JSONObject): JSONObject = api()?.post(path, body) ?: JSONObject()
+    fun patch(path: String, body: JSONObject): JSONObject = api()?.patch(path, body) ?: JSONObject()
+    fun delete(path: String): JSONObject = api()?.delete(path) ?: JSONObject()
+    fun text(path: String): String = api()?.let { String(it.bytes(path), Charsets.UTF_8) }.orEmpty()
+}
+
+/** Model catalogs differ per engine: instances carry either `models` or a
+ *  `catalog`. Both shapes become (instanceId, model) pairs. */
+fun parseModels(answer: JSONObject): List<Pair<String, String>> {
+    val result = mutableListOf<Pair<String, String>>()
+    val instances = answer.optJSONArray("instances") ?: answer.optJSONArray("engines") ?: return result
+    for (index in 0 until instances.length()) {
+        val instance = instances.optJSONObject(index) ?: continue
+        val instanceId = instance.optString("instanceId").takeIf { it.isNotBlank() } ?: continue
+        // Current OpenMausBot /api/instances responses use models.options.
+        // Keep compatibility with older servers that returned a raw array.
+        val models = instance.optJSONArray("models")
+            ?: instance.optJSONObject("models")?.optJSONArray("options")
+            ?: instance.optJSONObject("catalog")?.optJSONArray("models")
+        if (models != null) {
+            for (modelIndex in 0 until models.length()) {
+                val entry = models.opt(modelIndex)
+                val name = when (entry) {
+                    is String -> entry
+                    is JSONObject -> entry.optString("id").ifBlank { entry.optString("model") }
+                    else -> null
+                }
+                if (!name.isNullOrBlank()) result.add(instanceId to name)
+            }
+        }
+    }
+    return result.distinct()
+}

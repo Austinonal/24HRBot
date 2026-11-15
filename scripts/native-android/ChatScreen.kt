@@ -1,6 +1,8 @@
 package org.openmausbot.android.ui
 
+import android.content.Intent
 import android.graphics.BitmapFactory
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -64,7 +66,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
 import org.openmausbot.android.data.Attachment
 import org.openmausbot.android.data.Message
 import org.openmausbot.android.data.Repo
@@ -75,10 +80,16 @@ fun ChatScreen(
     selection: Selection,
     onBack: () -> Unit,
     onOpenSettings: () -> Unit,
+    onChangeThread: (String) -> Unit,
 ) {
     val bot = (selection as? Selection.BotTarget)?.bot
     val group = (selection as? Selection.GroupTarget)?.group
-    val threadId = bot?.activeTask?.threadId ?: bot?.threadId ?: group?.threadId ?: ""
+    val requestedThreadId = when (selection) {
+        is Selection.BotTarget -> selection.threadId
+        is Selection.GroupTarget -> selection.threadId
+    }
+    val threadId = requestedThreadId?.takeIf { it.isNotBlank() }
+        ?: bot?.activeTask?.threadId ?: bot?.threadId ?: group?.threadId ?: ""
     val title = bot?.name ?: group?.name ?: "แชต"
     val subtitle = bot?.subtitle ?: group?.subtitle ?: ""
     val liveBot = bot?.let { Repo.bots.firstOrNull { b -> b.id == it.id } } ?: bot
@@ -200,6 +211,34 @@ fun ChatScreen(
                             )
                         }
                         DropdownMenuItem(
+                            text = { Text("แชร์บทสนทนา") },
+                            onClick = {
+                                menu = false
+                                scope.launch {
+                                    try {
+                                        val markdown = withContext(Dispatchers.IO) {
+                                            ApiAccess.text("/api/threads/$threadId/export?format=markdown")
+                                        }
+                                        if (markdown.isBlank()) {
+                                            throw IllegalStateException("ไม่มีข้อความให้ส่งออก")
+                                        }
+                                        val share = Intent(Intent.ACTION_SEND).apply {
+                                            type = "text/markdown"
+                                            putExtra(Intent.EXTRA_SUBJECT, title)
+                                            putExtra(Intent.EXTRA_TEXT, markdown)
+                                        }
+                                        context.startActivity(Intent.createChooser(share, "แชร์บทสนทนา"))
+                                    } catch (e: Exception) {
+                                        Toast.makeText(
+                                            context,
+                                            e.message ?: "ส่งออกบทสนทนาไม่สำเร็จ",
+                                            Toast.LENGTH_LONG,
+                                        ).show()
+                                    }
+                                }
+                            },
+                        )
+                        DropdownMenuItem(
                             text = { Text("ตั้งค่าแอป") },
                             onClick = { menu = false; onOpenSettings() },
                         )
@@ -250,6 +289,19 @@ fun ChatScreen(
                                 bot?.let { Repo.alwaysAllow(it.id, threadId, card) }
                             }
                         },
+                        onReact = { emoji ->
+                            scope.launch {
+                                runCatching {
+                                    withContext(Dispatchers.IO) {
+                                        ApiAccess.post(
+                                            "/api/threads/$threadId/messages/${message.id}/reactions",
+                                            JSONObject().put("emoji", emoji).put("on", true),
+                                        )
+                                    }
+                                    Repo.loadThread(threadId, force = true)
+                                }
+                            }
+                        },
                     )
                 }
                 item { Spacer(Modifier.height(8.dp)) }
@@ -295,7 +347,12 @@ fun ChatScreen(
     }
 
     if (sheet && bot != null) {
-        BotSheet(bot = liveBot ?: bot, onDismiss = { sheet = false })
+        BotSheet(
+            bot = liveBot ?: bot,
+            currentThreadId = threadId,
+            onOpenThread = onChangeThread,
+            onDismiss = { sheet = false },
+        )
     }
 }
 
@@ -361,6 +418,7 @@ private fun MessageRow(
     message: Message,
     onAnswer: (String) -> Unit,
     onAlwaysAllow: () -> Unit,
+    onReact: (String) -> Unit,
 ) {
     when {
         message.kind == "activity" || message.tool != null -> {
@@ -428,6 +486,24 @@ private fun MessageRow(
                 Column(Modifier.fillMaxWidth().padding(end = 4.dp)) {
                     if (message.text.isNotBlank()) Markdown(message.text)
                     message.attachments.forEach { AttachmentView(it) }
+                }
+                if (message.kind == "text" && message.text.isNotBlank() && !message.pending) {
+                    Row(
+                        Modifier.padding(top = 5.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        listOf("👍", "👎", "❤️", "😂", "🎉", "👀").forEach { emoji ->
+                            Surface(
+                                modifier = Modifier.clickable { onReact(emoji) },
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f),
+                                shape = CircleShape,
+                            ) {
+                                Text(emoji, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    fontSize = 13.sp)
+                            }
+                        }
+                    }
                 }
             }
         }

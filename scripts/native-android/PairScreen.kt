@@ -57,7 +57,7 @@ fun PairScreen(invite: String?, onDismiss: () -> Unit) {
     var error by remember { mutableStateOf<String?>(null) }
     var pasted by remember { mutableStateOf("") }
     var manualOpen by remember { mutableStateOf(false) }
-    var host by remember { mutableStateOf("http://") }
+    var host by remember { mutableStateOf("https://") }
     var code by remember { mutableStateOf("") }
     var pending by remember { mutableStateOf<PairingInvite?>(null) }
     var saved by remember { mutableStateOf(Repo.computers) }
@@ -124,7 +124,7 @@ fun PairScreen(invite: String?, onDismiss: () -> Unit) {
                         fontWeight = FontWeight.Bold,
                     )
                     Text(
-                        "ANDROID COMPANION",
+                        "ANDROID APP",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         letterSpacing = 1.4.sp,
@@ -153,7 +153,7 @@ fun PairScreen(invite: String?, onDismiss: () -> Unit) {
                 color = MaterialTheme.colorScheme.onBackground,
             )
             Text(
-                "เชื่อมต่อกับ OpenMausBot บนคอมพิวเตอร์ เพื่อแชตกับ Bot ติดตามงาน และอนุมัติคำขอได้จากมือถือ",
+                "เชื่อมต่อกับ OpenMausBot Server บน Cloud หรือเซิร์ฟเวอร์ที่คุณดูแล เพื่อแชตกับ Bot ติดตามงาน และอนุมัติคำขอจากมือถือ",
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 12.dp),
@@ -196,14 +196,14 @@ fun PairScreen(invite: String?, onDismiss: () -> Unit) {
                             modifier = Modifier.padding(top = 4.dp),
                         )
                         Text(
-                            "ตรวจสอบว่าชื่อและที่อยู่นี้เป็นคอมพิวเตอร์ของคุณ ก่อนอนุญาตให้จับคู่",
+                            "ตรวจสอบชื่อและที่อยู่ให้แน่ใจว่าเป็น OpenMausBot Server ที่คุณเป็นเจ้าของหรือไว้วางใจก่อนจับคู่",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = 12.dp),
                         )
                         if (pending!!.token == null && pending!!.code == null) {
                             Text(
-                                "คำเชิญนี้ไม่มีรหัสจับคู่ โปรดสร้างคำเชิญใหม่จากคอมพิวเตอร์",
+                                "คำเชิญนี้ไม่มีข้อมูลจับคู่ โปรดสร้าง QR Code หรือลิงก์คำเชิญใหม่จาก OpenMausBot Server",
                                 color = MaterialTheme.colorScheme.error,
                                 style = MaterialTheme.typography.bodyMedium,
                                 modifier = Modifier.padding(top = 8.dp),
@@ -241,7 +241,7 @@ fun PairScreen(invite: String?, onDismiss: () -> Unit) {
                     scanner.launch(
                         ScanOptions()
                             .setDesiredBarcodeFormats(ScanOptions.QR_CODE)
-                            .setPrompt("สแกน QR Code จากหน้าจอคอมพิวเตอร์")
+                            .setPrompt("สแกน QR Code จาก OpenMausBot Server")
                             .setBeepEnabled(false)
                             .setOrientationLocked(true)
                     )
@@ -252,7 +252,7 @@ fun PairScreen(invite: String?, onDismiss: () -> Unit) {
                 Text("สแกน QR Code", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
             }
             Text(
-                "เปิดหน้าต่างเชื่อมต่อในคอมพิวเตอร์ แล้วสแกนรหัสที่แสดง",
+                "เปิดหน้าจอจับคู่ของ OpenMausBot Server แล้วสแกน QR Code ที่แสดง",
                 style = MaterialTheme.typography.labelSmall,
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -272,7 +272,7 @@ fun PairScreen(invite: String?, onDismiss: () -> Unit) {
             OutlinedButton(
                 onClick = {
                     val parsed = PairingInvite.parse(pasted)
-                    if (parsed == null) error = "ตรวจสอบลิงก์ไม่สำเร็จ โปรดใช้ลิงก์คำเชิญจากคอมพิวเตอร์"
+                    if (parsed == null) error = "ตรวจสอบลิงก์ไม่สำเร็จ โปรดใช้ลิงก์คำเชิญจาก OpenMausBot Server"
                     else pending = parsed
                 },
                 enabled = pasted.isNotBlank() && !busy,
@@ -302,8 +302,8 @@ fun PairScreen(invite: String?, onDismiss: () -> Unit) {
                         OutlinedTextField(
                             value = host,
                             onValueChange = { host = it.trim() },
-                            label = { Text("ที่อยู่คอมพิวเตอร์") },
-                            placeholder = { Text("http://192.168.1.20:8810") },
+                            label = { Text("ที่อยู่เซิร์ฟเวอร์") },
+                            placeholder = { Text("https://maus.example.com") },
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
                             shape = RoundedCornerShape(14.dp),
@@ -372,7 +372,7 @@ fun PairScreen(invite: String?, onDismiss: () -> Unit) {
                         fontWeight = FontWeight.SemiBold,
                     )
                     Text(
-                        "จับคู่เฉพาะคอมพิวเตอร์ที่คุณควบคุม ตรวจชื่อและที่อยู่ก่อนยืนยัน และใช้ HTTPS สำหรับการเชื่อมต่อระยะไกล",
+                        "จับคู่เฉพาะเซิร์ฟเวอร์ที่คุณควบคุมหรือเชื่อถือ ตรวจชื่อและที่อยู่ก่อนยืนยัน และใช้ HTTPS เมื่อเชื่อมต่อผ่านอินเทอร์เน็ต",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 5.dp),
@@ -383,7 +383,7 @@ fun PairScreen(invite: String?, onDismiss: () -> Unit) {
             if (saved.isNotEmpty()) {
                 Spacer(Modifier.height(28.dp))
                 Text(
-                    "คอมพิวเตอร์ที่เชื่อมต่อแล้ว",
+                    "เซิร์ฟเวอร์ที่เชื่อมต่อแล้ว",
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

@@ -383,6 +383,9 @@ Intentionally refused:
 - Reading credentials, arbitrary credential targets, and general provider
   configuration. The only credential write is the exact pending-card envelope
   above, and it feeds the existing desktop OS-encrypted save path.
+- Provider sign-in is limited to starting, polling and cancelling the primary
+  Codex device-code flow. ChatGPT plan browser OAuth, Claude, Gemini/Antigravity,
+  sign-out, and arbitrary provider authentication remain host-managed.
 - Pairing, device revocation, or companion lifecycle control.
 - Local VM lifecycle, webhooks, connectors, routines, team import/export, and
   internal peer-agent routes.

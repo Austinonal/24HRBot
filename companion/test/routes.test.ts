@@ -34,6 +34,9 @@ describe("what the app may do", () => {
     ["GET", "/api/config"],
     ["GET", "/api/events"],
     ["GET", "/api/instances"],
+    ["POST", "/api/instances/codex/auth/start"],
+    ["GET", "/api/instances/codex/auth/status"],
+    ["POST", "/api/instances/codex/auth/cancel"],
     ["POST", "/api/instances/claude/claude-update"],
     ["POST", "/api/instances/claude.work/claude-update"],
     ["GET", "/api/team-map"],
@@ -145,6 +148,23 @@ describe("what it may not", () => {
   it("does not list phones to a phone", () => {
     expect(ask("GET", "/api/phones")?.status).toBe(404);
     expect(ask("DELETE", "/api/phones/companion%3Ad1")?.status).toBe(404);
+  });
+
+  it("allows only the primary Codex device-code login flow from a paired phone", () => {
+    expect(allowed("POST", "/api/instances/codex/auth/start")).toBe(true);
+    expect(allowed("GET", "/api/instances/codex/auth/status")).toBe(true);
+    expect(allowed("POST", "/api/instances/codex/auth/cancel")).toBe(true);
+    for (const [method, path] of [
+      ["POST", "/api/instances/chatgpt/auth/start"],
+      ["POST", "/api/instances/claude/auth/start"],
+      ["POST", "/api/instances/gemini/auth/start"],
+      ["GET", "/api/instances/claude/auth/status"],
+      ["POST", "/api/instances/codex/auth/complete"],
+      ["POST", "/api/instances/codex/auth/sign-out"],
+      ["PATCH", "/api/instances/codex"],
+    ] as Array<[string, string]>) {
+      expect(allowed(method, path), method + " " + path).toBe(false);
+    }
   });
 
   it("refuses host configuration, and says where it happens", () => {
