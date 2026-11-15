@@ -328,10 +328,16 @@ export function createInstanceRoutes(deps: InstanceRouteDeps): RouteHandler {
       const authOwner = auth.kind === "session"
         ? auth.session.id
         : auth.companionDevice ? "companion:" + auth.companionDevice : "loopback";
-      const state = await providerAuthSessions.status(authStatus[1], authOwner, url.searchParams.get("flowId") ?? "");
-      // A finished device sign-in changed what the engine reports; the page reads the engines next.
-      if (state.phase !== "waiting") registry.forgetSnapshots();
-      return json(res, 200, { auth: state });
+      try {
+        const state = await providerAuthSessions.status(authStatus[1], authOwner, url.searchParams.get("flowId") ?? "");
+        // A finished device sign-in changed what the engine reports; the page reads the engines next.
+        if (state.phase !== "waiting") registry.forgetSnapshots();
+        return json(res, 200, { auth: state });
+      } catch (error) {
+        const requestedStatus = error && typeof error === "object" ? (error as { status?: unknown }).status : undefined;
+        const status = typeof requestedStatus === "number" && [400, 401, 404, 409, 413, 415].includes(requestedStatus) ? requestedStatus : 500;
+        return json(res, status, { error: error instanceof Error ? error.message : String(error), ...userErrorFields(error) });
+      }
     }
     const instanceAction = /^\/api\/instances\/([\w.-]+)\/(refresh-models|install|check|auth\/start|auth\/complete|auth\/cancel|auth\/sign-out)$/.exec(path);
     if (method === "POST" && instanceAction) {
